@@ -66,9 +66,11 @@ func buildRootFolder(title, mt string, year *int) string {
 	return SafePathName(title)
 }
 func cleanExtraFilename(name string) string {
-	stem := strings.TrimSuffix(name, filepath.Ext(name))
+	ext := filepath.Ext(name)
+	stem := strings.TrimSuffix(name, ext)
 	stem = regexp.MustCompile(`(?i)^Season[ ._-]?\d{1,2}[ ._-]*`).ReplaceAllString(stem, "")
-	return SafePathName(stem) + filepath.Ext(name)
+	stem = strings.Trim(stem, " ._-")
+	return SafePathName(stem) + ext
 }
 func detectMovieExtraFolder(path string) string {
 	if path == "" {
@@ -90,10 +92,30 @@ func detectMovieExtraFolder(path string) string {
 func Classify(downloadItemName, fileShortName, filePath string) Metadata {
 	ext := filepath.Ext(fileShortName)
 	combined := strings.Join([]string{downloadItemName, fileShortName, filePath}, " ")
-	title := SafePathName(guessTitle(firstNonEmpty(fileShortName, downloadItemName)))
-	itemTitle := SafePathName(guessTitle(firstNonEmpty(downloadItemName, fileShortName)))
+	parsed := parseTorrentName(firstNonEmpty(fileShortName, downloadItemName))
+	itemParsed := parseTorrentName(firstNonEmpty(downloadItemName, fileShortName))
+
+	title := SafePathName(firstNonEmpty(parsed.Title, guessTitle(firstNonEmpty(fileShortName, downloadItemName))))
+	itemTitle := SafePathName(firstNonEmpty(itemParsed.Title, guessTitle(firstNonEmpty(downloadItemName, fileShortName))))
+
 	isSeries, season, episode := extractSeriesMarkers(combined)
 	movieLike, year := extractMovieMarkers(combined)
+
+	if parsed.Season != nil {
+		season = parsed.Season
+		isSeries = true
+	}
+	if parsed.Episode != nil {
+		episode = parsed.Episode
+		isSeries = true
+	}
+	if parsed.Year != nil {
+		year = parsed.Year
+	}
+	if itemParsed.Year != nil {
+		year = itemParsed.Year
+	}
+
 	extra := detectMovieExtraFolder(filePath)
 	if extra != "" && itemTitle != "" {
 		if isSeries {

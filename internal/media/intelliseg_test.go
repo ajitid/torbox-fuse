@@ -22,3 +22,137 @@ func TestClassifyMovieExtra(t *testing.T) {
 		t.Fatalf("unexpected: %#v", m)
 	}
 }
+
+func TestClassifyRealMovieArgo(t *testing.T) {
+	m := Classify(
+		"Argo (2012) 1080p DV HDR Bluray AV1 EAC3",
+		"Argo.2012.1080p.DV.HDR.Bluray.AV1.EAC3.MultiSub.mkv",
+		"Argo (2012) 1080p DV HDR Bluray AV1 EAC3/Argo.2012.1080p.DV.HDR.Bluray.AV1.EAC3.MultiSub.mkv",
+	)
+	assertMetadata(t, m, Metadata{
+		Title:          "Argo",
+		MediaType:      "movie",
+		RootFolderName: "Argo (2012)",
+		FileName:       "Argo (2012).mkv",
+	})
+	assertPtr(t, m.Years, 2012)
+}
+
+func TestClassifyRealHomelandEpisode(t *testing.T) {
+	m := Classify(
+		"Homeland (2011) Season 4 S04 + Extras (1080p BluRay x265 HEVC 10bit AAC 5.1 Silence)",
+		"Homeland (2011) - S04E12 - Long Time Coming (1080p BluRay x265 Silence).mkv",
+		"Homeland (2011) Season 4 S04 + Extras (1080p BluRay x265 HEVC 10bit AAC 5.1 Silence)/Homeland (2011) - S04E12 - Long Time Coming (1080p BluRay x265 Silence).mkv",
+	)
+	assertMetadata(t, m, Metadata{
+		Title:          "Homeland",
+		MediaType:      "series",
+		RootFolderName: "Homeland",
+		FolderName:     "Season 4",
+		FileName:       "Homeland S04E12.mkv",
+	})
+	assertPtr(t, m.Years, 2011)
+	assertPtr(t, m.Season, 4)
+	assertPtr(t, m.Episode, 12)
+}
+
+func TestClassifyRealForAllMankindEpisode(t *testing.T) {
+	m := Classify(
+		"For All Mankind (2019) S02 (1080p BluRay x265 10bit EAC3 5.1 Silence) [QxR]",
+		"For All Mankind (2019) - S02E01 - Every Little Thing (1080p BluRay x265 Silence).mkv",
+		"For All Mankind (2019) S02 (1080p BluRay x265 10bit EAC3 5.1 Silence) [QxR]/For All Mankind (2019) - S02E01 - Every Little Thing (1080p BluRay x265 Silence).mkv",
+	)
+	assertMetadata(t, m, Metadata{
+		Title:          "For All Mankind",
+		MediaType:      "series",
+		RootFolderName: "For All Mankind",
+		FolderName:     "Season 2",
+		FileName:       "For All Mankind S02E01.mkv",
+	})
+	assertPtr(t, m.Years, 2019)
+	assertPtr(t, m.Season, 2)
+	assertPtr(t, m.Episode, 1)
+}
+
+func TestClassifyTedLassoFeaturette(t *testing.T) {
+	m := Classify(
+		"Ted Lasso (2020) S01 (1080p BluRay x265 10bit EAC3 5.1 Ghost)",
+		"Season 1 - Extra Time with Coach Lasso - NBC Sports.mkv",
+		"Ted Lasso (2020) S01 (1080p BluRay x265 10bit EAC3 5.1 Ghost)/Featurettes/Season 1 - Extra Time with Coach Lasso - NBC Sports.mkv",
+	)
+	assertMetadata(t, m, Metadata{
+		Title:           "Ted Lasso",
+		MediaType:       "series",
+		RootFolderName:  "Ted Lasso",
+		FolderName:      "Season 1",
+		ExtraFolderName: "Featurettes",
+		FileName:        "Extra Time with Coach Lasso - NBC Sports.mkv",
+	})
+	assertPtr(t, m.Years, 2020)
+	assertPtr(t, m.Season, 1)
+	assertNoPtr(t, m.Episode)
+}
+
+func TestClassifyCrazyStupidLoveMovieAndFeaturette(t *testing.T) {
+	movie := Classify(
+		"Crazy, Stupid, Love. (2011) 1080p BluRay x265",
+		"Crazy, Stupid, Love.2011.1080p.BluRay.x265.mkv",
+		"Crazy, Stupid, Love. (2011) 1080p BluRay x265/Crazy, Stupid, Love.2011.1080p.BluRay.x265.mkv",
+	)
+	assertMetadata(t, movie, Metadata{
+		Title:          "Crazy, Stupid, Love",
+		MediaType:      "movie",
+		RootFolderName: "Crazy, Stupid, Love (2011)",
+		FileName:       "Crazy, Stupid, Love (2011).mkv",
+	})
+	assertPtr(t, movie.Years, 2011)
+
+	extra := Classify(
+		"Crazy, Stupid, Love. (2011) 1080p BluRay x265",
+		"Deleted Scenes.mkv",
+		"Crazy, Stupid, Love. (2011) 1080p BluRay x265/Featurettes/Deleted Scenes.mkv",
+	)
+	assertMetadata(t, extra, Metadata{
+		Title:          "Crazy, Stupid, Love",
+		MediaType:      "movie",
+		RootFolderName: "Crazy, Stupid, Love (2011)",
+		FolderName:     "Featurettes",
+		FileName:       "Deleted Scenes.mkv",
+	})
+	assertPtr(t, extra.Years, 2011)
+}
+
+func TestParseTorrentNameYearLikeTitle1917(t *testing.T) {
+	p := parseTorrentName("1917.2019.1080p.BluRay.x265.mkv")
+	if p.Title != "1917" {
+		t.Fatalf("title = %q, want 1917", p.Title)
+	}
+	assertPtr(t, p.Year, 2019)
+
+	p = parseTorrentName("1917.1080p.BluRay.x265.mkv")
+	if p.Title != "1917" {
+		t.Fatalf("title = %q, want 1917", p.Title)
+	}
+	assertNoPtr(t, p.Year)
+}
+
+func assertMetadata(t *testing.T, got, want Metadata) {
+	t.Helper()
+	if got.Title != want.Title || got.MediaType != want.MediaType || got.RootFolderName != want.RootFolderName || got.FolderName != want.FolderName || got.ExtraFolderName != want.ExtraFolderName || got.FileName != want.FileName {
+		t.Fatalf("unexpected metadata:\n got: %#v\nwant: %#v", got, want)
+	}
+}
+
+func assertPtr(t *testing.T, got *int, want int) {
+	t.Helper()
+	if got == nil || *got != want {
+		t.Fatalf("pointer = %v, want %d", got, want)
+	}
+}
+
+func assertNoPtr(t *testing.T, got *int) {
+	t.Helper()
+	if got != nil {
+		t.Fatalf("pointer = %d, want nil", *got)
+	}
+}
