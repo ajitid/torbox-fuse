@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TorBox-App/torbox-rclone/internal/media"
+	"github.com/TorBox-App/torbox-fuse/internal/media"
 )
 
 const DefaultBlockSize int64 = 4 * 1024 * 1024

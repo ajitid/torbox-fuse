@@ -1,4 +1,4 @@
-module github.com/TorBox-App/torbox-rclone
+module github.com/TorBox-App/torbox-fuse
 
 go 1.26.2
 

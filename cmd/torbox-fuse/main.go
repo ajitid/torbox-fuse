@@ -13,12 +13,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/TorBox-App/torbox-rclone/internal/cache"
-	"github.com/TorBox-App/torbox-rclone/internal/config"
-	"github.com/TorBox-App/torbox-rclone/internal/fusefs"
-	"github.com/TorBox-App/torbox-rclone/internal/refresh"
-	"github.com/TorBox-App/torbox-rclone/internal/store"
-	"github.com/TorBox-App/torbox-rclone/internal/torbox"
+	"github.com/TorBox-App/torbox-fuse/internal/cache"
+	"github.com/TorBox-App/torbox-fuse/internal/config"
+	"github.com/TorBox-App/torbox-fuse/internal/fusefs"
+	"github.com/TorBox-App/torbox-fuse/internal/refresh"
+	"github.com/TorBox-App/torbox-fuse/internal/store"
+	"github.com/TorBox-App/torbox-fuse/internal/torbox"
 	"github.com/joho/godotenv"
 )
 
@@ -32,7 +32,7 @@ func run() error {
 	if runtime.GOOS == "windows" {
 		return errors.New("native FUSE mount is not supported on Windows")
 	}
-	logger := log.New(os.Stderr, "torbox-media-center: ", log.LstdFlags)
+	logger := log.New(os.Stderr, "torbox-fuse: ", log.LstdFlags)
 	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("load .env: %w", err)
 	}

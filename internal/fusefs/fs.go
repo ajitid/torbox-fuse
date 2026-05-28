@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/TorBox-App/torbox-rclone/internal/cache"
-	"github.com/TorBox-App/torbox-rclone/internal/media"
-	"github.com/TorBox-App/torbox-rclone/internal/torbox"
-	"github.com/TorBox-App/torbox-rclone/internal/vfs"
+	"github.com/TorBox-App/torbox-fuse/internal/cache"
+	"github.com/TorBox-App/torbox-fuse/internal/media"
+	"github.com/TorBox-App/torbox-fuse/internal/torbox"
+	"github.com/TorBox-App/torbox-fuse/internal/vfs"
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
 )
@@ -35,7 +35,7 @@ func (f *FS) Swap(records []media.FileRecord) { f.tree.Store(vfs.Build(records))
 func (f *FS) current() *vfs.Tree              { return f.tree.Load().(*vfs.Tree) }
 func (f *FS) Mount(mountPath string, allowOther bool, logger *log.Logger) (*fuse.Server, error) {
 	d := 2 * time.Second
-	return fs.Mount(mountPath, f, &fs.Options{MountOptions: fuse.MountOptions{AllowOther: allowOther, Options: []string{"ro", "fsname=torbox-media-center"}}, EntryTimeout: &d, AttrTimeout: &d, Logger: logger})
+	return fs.Mount(mountPath, f, &fs.Options{MountOptions: fuse.MountOptions{AllowOther: allowOther, Options: []string{"ro", "fsname=torbox-fuse"}}, EntryTimeout: &d, AttrTimeout: &d, Logger: logger})
 }
 
 var _ fs.NodeReaddirer = (*FS)(nil)

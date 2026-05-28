@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/TorBox-App/torbox-rclone/internal/media"
+	"github.com/TorBox-App/torbox-fuse/internal/media"
 	bolt "go.etcd.io/bbolt"
 )
 

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/TorBox-App/torbox-rclone/internal/media"
+	"github.com/TorBox-App/torbox-fuse/internal/media"
 )
 
 type DirEntry struct {

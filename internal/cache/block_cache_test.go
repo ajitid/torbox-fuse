@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TorBox-App/torbox-rclone/internal/media"
+	"github.com/TorBox-App/torbox-fuse/internal/media"
 )
 
 func TestReadComposesBlocksAndHitsCache(t *testing.T) {

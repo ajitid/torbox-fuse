@@ -31,7 +31,7 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("TORBOX_API_KEY is required")
 	}
 	mountPath := envDefault("MOUNT_PATH", "./torbox")
-	dataPath := envDefault("DATA_PATH", "./torbox-media-center.db")
+	dataPath := envDefault("DATA_PATH", "./torbox-fuse.db")
 	refresh, err := parseRefreshPreset(envDefault("MOUNT_REFRESH_TIME", "normal"))
 	if err != nil {
 		return Config{}, err
@@ -47,7 +47,7 @@ func Load() (Config, error) {
 		RefreshEvery: refresh,
 		AllowOther:   parseBoolEnv(os.Getenv("FUSE_ALLOW_OTHER")),
 		Version:      "dev",
-		CachePath:    envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-media-center")),
+		CachePath:    envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-fuse")),
 		CacheSize:    DefaultCacheSize,
 		ReadAhead:    DefaultReadAhead,
 	}, nil
@@ -89,7 +89,6 @@ func parseBoolEnv(v string) bool {
 		return false
 	}
 }
-
 
 func MaskAPIKey(s string) string {
 	if len(s) <= 8 {

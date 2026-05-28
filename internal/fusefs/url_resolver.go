@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/TorBox-App/torbox-rclone/internal/media"
-	"github.com/TorBox-App/torbox-rclone/internal/torbox"
+	"github.com/TorBox-App/torbox-fuse/internal/media"
+	"github.com/TorBox-App/torbox-fuse/internal/torbox"
 )
 
 type URLResolver struct {

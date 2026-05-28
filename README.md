@@ -1,11 +1,11 @@
-# TorBox native FUSE media center
+# TorBox Fuse
 
 A read-only Go FUSE filesystem for TorBox media. It fetches cached TorBox downloads, classifies videos/subtitles into `movies`, `series`, and `unknown`, stores metadata in bbolt, and streams reads through a bounded disk block cache with sequential read-ahead.
 
 ## Run
 
 ```bash
-TORBOX_API_KEY=... MOUNT_PATH=/tmp/torbox-test DATA_PATH=/tmp/torbox-test.db go run ./cmd/torbox-media-center
+TORBOX_API_KEY=... MOUNT_PATH=/tmp/torbox-test DATA_PATH=/tmp/torbox-test.db go run ./cmd/torbox-fuse
 ```
 
 The mount directory must exist or be creatable and must be empty. Unmount with Ctrl+C, or manually with:
@@ -20,7 +20,7 @@ See `.env.example`.
 
 - `TORBOX_API_KEY` is required.
 - `MOUNT_PATH` defaults to `./torbox`.
-- `DATA_PATH` defaults to `./torbox-media-center.db`.
+- `DATA_PATH` defaults to `./torbox-fuse.db`.
 - `MOUNT_REFRESH_TIME`: `slowest`, `very_slow`, `slow`, `normal`, `fast`, `ultra_fast`, or `instant`.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
-- `CACHE_PATH` defaults to your OS cache directory plus `torbox-media-center`.
+- `CACHE_PATH` defaults to your OS cache directory plus `torbox-fuse`.

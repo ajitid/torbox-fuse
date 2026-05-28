@@ -3,7 +3,7 @@ package vfs
 import (
 	"testing"
 
-	"github.com/TorBox-App/torbox-rclone/internal/media"
+	"github.com/TorBox-App/torbox-fuse/internal/media"
 )
 
 func TestBuildTree(t *testing.T) {

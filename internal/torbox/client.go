@@ -47,7 +47,7 @@ type Client struct {
 }
 
 func New(apiKey, version string) *Client {
-	return &Client{apiKey: apiKey, http: &http.Client{Timeout: 60 * time.Second}, baseURL: "https://api.torbox.app/v1/api", userAgent: "torbox-media-center-go/" + version}
+	return &Client{apiKey: apiKey, http: &http.Client{Timeout: 60 * time.Second}, baseURL: "https://api.torbox.app/v1/api", userAgent: "torbox-fuse-go/" + version}
 }
 func (c *Client) SetBaseURL(u string) { c.baseURL = strings.TrimRight(u, "/") }
 

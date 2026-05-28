@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/TorBox-App/torbox-rclone/internal/torbox"
+	"github.com/TorBox-App/torbox-fuse/internal/torbox"
 )
 
 type FileRecord struct {

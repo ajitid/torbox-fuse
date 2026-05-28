@@ -1,8 +1,8 @@
-# Plan: Go native-FUSE TorBox Media Center
+# Plan: TorBox Fuse
 
 ## Goal
 
-Implement `/home/ajit/ghq/github.com/TorBox-App/torbox-media-center-main` in Go in this repo (`/home/ajit/ghq/github.com/TorBox-App/torbox-rclone`) as a single read-only native FUSE media filesystem.
+Implement `/home/ajit/ghq/github.com/TorBox-App/torbox-media-center-main` in Go in this repo (`/home/ajit/ghq/github.com/TorBox-App/torbox-fuse`) as a single read-only native FUSE media filesystem.
 
 User decisions locked in:
 
@@ -63,7 +63,7 @@ Use stdlib for env parsing, HTTP client, logging, signals, and scheduling.
 ## Architecture
 
 ```text
-cmd/torbox-media-center/main.go
+cmd/torbox-fuse/main.go
   -> internal/config       env + validation
   -> internal/torbox       API client, pagination, redirect resolution, ranged downloads
   -> internal/media        IntelliSeg classification + subtitle matching
@@ -96,8 +96,8 @@ Keep only the env variables useful to this Go implementation:
 - `TORBOX_API_KEY` required.
 - `MOUNT_PATH` optional, default `./torbox`.
 - `MOUNT_REFRESH_TIME` optional: `slowest`, `very_slow`, `slow`, `normal`, `fast`, `ultra_fast`, `instant`; default `normal`.
-- `DATA_PATH` optional, default `./torbox-media-center.db`.
-- `CACHE_PATH` optional for milestone 2, default OS cache dir plus `torbox-media-center`.
+- `DATA_PATH` optional, default `./torbox-fuse.db`.
+- `CACHE_PATH` optional for milestone 2, default OS cache dir plus `torbox-fuse`.
 - `CACHE_SIZE` optional for milestone 2, default `7GiB`.
 - `READ_AHEAD` optional for milestone 2, default `600MiB` or simpler block-count equivalent.
 - `FUSE_ALLOW_OTHER` optional bool, default `false`; when true set `AllowOther` and document Linux `/etc/fuse.conf` requirement.
@@ -122,7 +122,7 @@ Change module to a real module name and set a realistic supported Go version if 
 Target content shape:
 
 ```go
-module github.com/TorBox-App/torbox-rclone
+module github.com/TorBox-App/torbox-fuse
 
 go 1.25
 
@@ -135,7 +135,7 @@ require (
 
 Use `go get ...` instead of manually pinning versions during execution.
 
-### 2. Add `cmd/torbox-media-center/main.go`
+### 2. Add `cmd/torbox-fuse/main.go`
 
 Responsibilities:
 
@@ -432,13 +432,13 @@ Run during execution:
 ```bash
 go test ./...
 go vet ./...
-go run ./cmd/torbox-media-center --help  # if CLI flags are added
+go run ./cmd/torbox-fuse --help  # if CLI flags are added
 ```
 
 Manual verification with a real TorBox API key:
 
 ```bash
-TORBOX_API_KEY=... MOUNT_PATH=/tmp/torbox-test DATA_PATH=/tmp/torbox-test.db go run ./cmd/torbox-media-center
+TORBOX_API_KEY=... MOUNT_PATH=/tmp/torbox-test DATA_PATH=/tmp/torbox-test.db go run ./cmd/torbox-fuse
 find /tmp/torbox-test -maxdepth 4 -type f | head
 ffprobe /tmp/torbox-test/...  # or play via VLC/Jellyfin/Plex scan
 ```

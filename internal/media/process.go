@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/TorBox-App/torbox-rclone/internal/torbox"
+	"github.com/TorBox-App/torbox-fuse/internal/torbox"
 )
 
 func ProcessItems(c *torbox.Client, typ torbox.DownloadType, items []torbox.Item) []FileRecord {
