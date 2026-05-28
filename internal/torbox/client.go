@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -47,7 +48,15 @@ type Client struct {
 }
 
 func New(apiKey, version string) *Client {
-	return &Client{apiKey: apiKey, http: &http.Client{Timeout: 60 * time.Second}, baseURL: "https://api.torbox.app/v1/api", userAgent: "torbox-media-center-go/" + version}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	dialer := &net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}
+	transport.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+		if network == "tcp" {
+			network = "tcp4"
+		}
+		return dialer.DialContext(ctx, network, address)
+	}
+	return &Client{apiKey: apiKey, http: &http.Client{Timeout: 60 * time.Second, Transport: transport}, baseURL: "https://api.torbox.app/v1/api", userAgent: "torbox-media-center-go/" + version}
 }
 func (c *Client) SetBaseURL(u string) { c.baseURL = strings.TrimRight(u, "/") }
 

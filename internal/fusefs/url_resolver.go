@@ -48,5 +48,5 @@ func (r *URLResolver) Invalidate(rec media.FileRecord) {
 	r.mu.Unlock()
 }
 func expiryStatus(status int) bool {
-	return status == http.StatusUnauthorized || status == http.StatusForbidden || status == http.StatusNotFound
+	return status == 0 || status == http.StatusUnauthorized || status == http.StatusForbidden || status == http.StatusNotFound
 }

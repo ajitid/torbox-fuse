@@ -27,11 +27,13 @@ type BlockCache struct {
 	readAhead int64
 	blockSize int64
 
-	mu       sync.Mutex
-	entries  map[string]*entry
-	used     int64
-	inflight map[string]*call
-	lastEnd  map[string]int64
+	mu          sync.Mutex
+	entries     map[string]*entry
+	used        int64
+	inflight    map[string]*call
+	lastEnd     map[string]int64
+	prefetchGen map[string]uint64
+	prefetchSem chan struct{}
 }
 
 type entry struct {
@@ -57,7 +59,7 @@ func New(dir string, maxBytes, readAhead int64) (*BlockCache, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
-	c := &BlockCache{dir: dir, maxBytes: maxBytes, readAhead: readAhead, blockSize: DefaultBlockSize, entries: map[string]*entry{}, inflight: map[string]*call{}, lastEnd: map[string]int64{}}
+	c := &BlockCache{dir: dir, maxBytes: maxBytes, readAhead: readAhead, blockSize: DefaultBlockSize, entries: map[string]*entry{}, inflight: map[string]*call{}, lastEnd: map[string]int64{}, prefetchGen: map[string]uint64{}, prefetchSem: make(chan struct{}, 2)}
 	if err := c.scan(); err != nil {
 		return nil, err
 	}
@@ -157,16 +159,22 @@ func (c *BlockCache) maybePrefetch(rec media.FileRecord, off, got int64, fetch F
 		return
 	}
 	end := off + got
+	fileKey := c.fileKey(rec)
 	sequential := off == 0
 	c.mu.Lock()
-	if c.lastEnd[rec.Key] == off {
+	if c.lastEnd[fileKey] == off {
 		sequential = true
 	}
-	c.lastEnd[rec.Key] = end
-	c.mu.Unlock()
+	c.lastEnd[fileKey] = end
 	if !sequential {
+		// A real seek happened. Invalidate queued prefetch work for the old
+		// position so interactive seeks are not stuck behind stale read-ahead.
+		c.prefetchGen[fileKey]++
+		c.mu.Unlock()
 		return
 	}
+	gen := c.prefetchGen[fileKey]
+	c.mu.Unlock()
 	firstBlock := (end + c.blockSize - 1) / c.blockSize
 	blocks := c.readAhead / c.blockSize
 	if c.readAhead%c.blockSize != 0 {
@@ -182,6 +190,18 @@ func (c *BlockCache) maybePrefetch(rec media.FileRecord, off, got int64, fetch F
 			continue
 		}
 		go func() {
+			if !c.sameGeneration(fileKey, gen) {
+				return
+			}
+			select {
+			case c.prefetchSem <- struct{}{}:
+				defer func() { <-c.prefetchSem }()
+			default:
+				return
+			}
+			if !c.sameGeneration(fileKey, gen) {
+				return
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
 			_, _, _ = c.getBlock(ctx, rec, blockNo, fetch)
@@ -282,13 +302,22 @@ func (c *BlockCache) removeLocked(key string) {
 	delete(c.entries, key)
 }
 
+func (c *BlockCache) sameGeneration(fileKey string, gen uint64) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.prefetchGen[fileKey] == gen
+}
+
 func (c *BlockCache) blockKey(rec media.FileRecord, blockNo int64) string {
-	stable := rec.Key
-	if stable == "" {
-		stable = rec.DownloadLink
-	}
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%s:%d", stable, blockNo)))
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s:%d", c.fileKey(rec), blockNo)))
 	return hex.EncodeToString(sum[:])
+}
+
+func (c *BlockCache) fileKey(rec media.FileRecord) string {
+	if rec.Key != "" {
+		return rec.Key
+	}
+	return rec.DownloadLink
 }
 
 func minInt64(a, b int64) int64 {
