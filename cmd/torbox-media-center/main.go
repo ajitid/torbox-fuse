@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"runtime"
 	"syscall"
@@ -84,21 +85,49 @@ func run() error {
 	<-ctx.Done()
 	logger.Printf("unmounting %s", cfg.MountPath)
 	if err := server.Unmount(); err != nil {
-		logger.Printf("unmount failed: %v", err)
+		logger.Printf("normal unmount failed: %v", err)
+		if lazyErr := lazyUnmount(cfg.MountPath); lazyErr != nil {
+			logger.Printf("lazy unmount failed: %v", lazyErr)
+		} else {
+			logger.Printf("lazy unmount succeeded")
+		}
 	}
 	return nil
 }
 
 func ensureEmptyMountPath(p string) error {
 	if err := os.MkdirAll(p, 0755); err != nil {
-		return err
+		if lazyErr := lazyUnmount(p); lazyErr != nil {
+			return err
+		}
+		if retryErr := os.MkdirAll(p, 0755); retryErr != nil {
+			return retryErr
+		}
 	}
 	entries, err := os.ReadDir(p)
 	if err != nil {
-		return err
+		if lazyErr := lazyUnmount(p); lazyErr != nil {
+			return err
+		}
+		entries, err = os.ReadDir(p)
+		if err != nil {
+			return err
+		}
 	}
 	if len(entries) > 0 {
 		return fmt.Errorf("mount path must be empty: %s", p)
+	}
+	return nil
+}
+
+func lazyUnmount(p string) error {
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("lazy FUSE unmount is only implemented on Linux")
+	}
+	cmd := exec.Command("fusermount3", "-uz", p)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("fusermount3 -uz: %w: %s", err, string(out))
 	}
 	return nil
 }
