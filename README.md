@@ -24,5 +24,3 @@ See `.env.example`.
 - `MOUNT_REFRESH_TIME`: `slowest`, `very_slow`, `slow`, `normal`, `fast`, `ultra_fast`, or `instant`.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
 - `CACHE_PATH` defaults to your OS cache directory plus `torbox-media-center`.
-- `CACHE_SIZE` defaults to `7GiB`; accepts plain bytes or `KiB`/`MiB`/`GiB`/`TiB` suffixes.
-- `READ_AHEAD` defaults to `600MiB`; sequential reads prefetch this many bytes ahead in 4 MiB blocks.

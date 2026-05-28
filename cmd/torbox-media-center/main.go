@@ -40,7 +40,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("mount=%s data=%s cache=%s cache_size=%d read_ahead=%d refresh=%s api_key=%s allow_other=%v", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.CacheSize, cfg.ReadAhead, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther)
+	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther)
 	if err := ensureEmptyMountPath(cfg.MountPath); err != nil {
 		return err
 	}
