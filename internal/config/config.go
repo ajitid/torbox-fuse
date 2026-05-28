@@ -14,15 +14,16 @@ const (
 )
 
 type Config struct {
-	APIKey       string
-	MountPath    string
-	DataPath     string
-	RefreshEvery time.Duration
-	AllowOther   bool
-	Version      string
-	CachePath    string
-	CacheSize    int64
-	ReadAhead    int64
+	APIKey            string
+	MountPath         string
+	DataPath          string
+	RefreshEvery      time.Duration
+	AllowOther        bool
+	Version           string
+	CachePath         string
+	CacheSize         int64
+	ReadAhead         int64
+	ControlSocketPath string
 }
 
 func Load() (Config, error) {
@@ -41,15 +42,16 @@ func Load() (Config, error) {
 		cacheRoot = os.TempDir()
 	}
 	return Config{
-		APIKey:       apiKey,
-		MountPath:    mountPath,
-		DataPath:     dataPath,
-		RefreshEvery: refresh,
-		AllowOther:   parseBoolEnv(os.Getenv("FUSE_ALLOW_OTHER")),
-		Version:      "dev",
-		CachePath:    envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-fuse")),
-		CacheSize:    DefaultCacheSize,
-		ReadAhead:    DefaultReadAhead,
+		APIKey:            apiKey,
+		MountPath:         mountPath,
+		DataPath:          dataPath,
+		RefreshEvery:      refresh,
+		AllowOther:        parseBoolEnv(os.Getenv("FUSE_ALLOW_OTHER")),
+		Version:           "dev",
+		CachePath:         envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-fuse")),
+		CacheSize:         DefaultCacheSize,
+		ReadAhead:         DefaultReadAhead,
+		ControlSocketPath: envDefault("CONTROL_SOCKET_PATH", "/tmp/torbox-fuse.sock"),
 	}, nil
 }
 

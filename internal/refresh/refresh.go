@@ -21,10 +21,7 @@ func New(c *torbox.Client, s *store.Store, l *log.Logger) *Manager {
 	return &Manager{client: c, store: s, log: l}
 }
 func (m *Manager) Run(ctx context.Context) ([]media.FileRecord, error) {
-	if !m.mu.TryLock() {
-		m.log.Printf("refresh already running; skipping")
-		return m.store.All(ctx)
-	}
+	m.mu.Lock()
 	defer m.mu.Unlock()
 	var all []media.FileRecord
 	for _, typ := range torbox.AllDownloadTypes() {

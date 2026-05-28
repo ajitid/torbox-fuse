@@ -27,6 +27,7 @@ func main() {
 		log.Fatalf("%v", err)
 	}
 }
+
 func run() error {
 	flag.Parse()
 	if runtime.GOOS == "windows" {
@@ -40,7 +41,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther)
+	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v control_socket=%s", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther, cfg.ControlSocketPath)
 	if err := ensureEmptyMountPath(cfg.MountPath); err != nil {
 		return err
 	}
@@ -68,6 +69,20 @@ func run() error {
 		return fmt.Errorf("mount failed: %w", err)
 	}
 	logger.Printf("mounted on %s with %d files", cfg.MountPath, len(records))
+	refreshOnce := func(ctx context.Context, reason string) (int, error) {
+		logger.Printf("%s refresh starting", reason)
+		recs, err := mgr.Run(ctx)
+		if err != nil {
+			logger.Printf("%s refresh failed: %v", reason, err)
+			return 0, err
+		}
+		root.Swap(recs)
+		logger.Printf("%s refresh applied: %d files", reason, len(recs))
+		return len(recs), nil
+	}
+	if _, err := startControlServer(ctx, cfg.ControlSocketPath, logger, refreshOnce); err != nil {
+		return fmt.Errorf("start control socket: %w", err)
+	}
 	go func() {
 		ticker := time.NewTicker(cfg.RefreshEvery)
 		defer ticker.Stop()
@@ -76,13 +91,7 @@ func run() error {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				recs, err := mgr.Run(ctx)
-				if err != nil {
-					logger.Printf("refresh failed: %v", err)
-					continue
-				}
-				root.Swap(recs)
-				logger.Printf("refresh applied: %d files", len(recs))
+				_, _ = refreshOnce(ctx, "scheduled")
 			}
 		}
 	}()
