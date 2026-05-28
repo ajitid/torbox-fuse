@@ -27,7 +27,7 @@ See `.env.example`.
 - `TORBOX_API_KEY` is required.
 - `MOUNT_PATH` defaults to `./torbox`.
 - `DATA_PATH` defaults to `./torbox-fuse.db`.
-- `MOUNT_REFRESH_TIME`: `slowest`, `very_slow`, `slow`, `normal`, `fast`, `ultra_fast`, or `instant`.
+- `MOUNT_REFRESH_TIME` defaults to `3h`. Valid values: `24h`, `12h`, `6h`, `3h`, `1h`, or `6min`.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
 - `CACHE_PATH` defaults to your OS cache directory plus `torbox-fuse`.
 - `CONTROL_SOCKET_PATH` defaults to `/tmp/torbox-fuse.sock`; POST `/refresh` over this Unix socket triggers a synchronous refresh.

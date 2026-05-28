@@ -33,7 +33,7 @@ func Load() (Config, error) {
 	}
 	mountPath := envDefault("MOUNT_PATH", "./torbox")
 	dataPath := envDefault("DATA_PATH", "./torbox-fuse.db")
-	refresh, err := parseRefreshPreset(envDefault("MOUNT_REFRESH_TIME", "normal"))
+	refresh, err := parseRefreshTime(envDefault("MOUNT_REFRESH_TIME", "3h"))
 	if err != nil {
 		return Config{}, err
 	}
@@ -62,24 +62,22 @@ func envDefault(key, def string) string {
 	return def
 }
 
-func parseRefreshPreset(v string) (time.Duration, error) {
+func parseRefreshTime(v string) (time.Duration, error) {
 	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "slowest":
+	case "24h":
 		return 24 * time.Hour, nil
-	case "very_slow":
+	case "12h":
 		return 12 * time.Hour, nil
-	case "slow":
+	case "6h":
 		return 6 * time.Hour, nil
-	case "normal", "":
+	case "3h", "":
 		return 3 * time.Hour, nil
-	case "fast":
-		return 2 * time.Hour, nil
-	case "ultra_fast":
+	case "1h":
 		return time.Hour, nil
-	case "instant":
+	case "6min":
 		return 6 * time.Minute, nil
 	default:
-		return 0, fmt.Errorf("invalid MOUNT_REFRESH_TIME %q", v)
+		return 0, fmt.Errorf("invalid MOUNT_REFRESH_TIME %q (valid values: 24h, 12h, 6h, 3h, 1h, 6min)", v)
 	}
 }
 
