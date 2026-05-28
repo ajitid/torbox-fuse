@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -35,6 +36,14 @@ func Load() (Config, error) {
 	if cacheRoot == "" {
 		cacheRoot = os.TempDir()
 	}
+	cacheSize, err := parseBytes(envDefault("CACHE_SIZE", "7GiB"))
+	if err != nil {
+		return Config{}, fmt.Errorf("invalid CACHE_SIZE: %w", err)
+	}
+	readAhead, err := parseBytes(envDefault("READ_AHEAD", "600MiB"))
+	if err != nil {
+		return Config{}, fmt.Errorf("invalid READ_AHEAD: %w", err)
+	}
 	return Config{
 		APIKey:       apiKey,
 		MountPath:    mountPath,
@@ -43,8 +52,8 @@ func Load() (Config, error) {
 		AllowOther:   parseBoolEnv(os.Getenv("FUSE_ALLOW_OTHER")),
 		Version:      "dev",
 		CachePath:    envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-media-center")),
-		CacheSize:    7 * 1024 * 1024 * 1024,
-		ReadAhead:    600 * 1024 * 1024,
+		CacheSize:    cacheSize,
+		ReadAhead:    readAhead,
 	}, nil
 }
 
@@ -83,6 +92,40 @@ func parseBoolEnv(v string) bool {
 	default:
 		return false
 	}
+}
+
+func parseBytes(v string) (int64, error) {
+	s := strings.TrimSpace(v)
+	if s == "" {
+		return 0, fmt.Errorf("empty size")
+	}
+	units := []struct {
+		suffix string
+		mul    int64
+	}{
+		{"tib", 1024 * 1024 * 1024 * 1024}, {"tb", 1000 * 1000 * 1000 * 1000},
+		{"gib", 1024 * 1024 * 1024}, {"gb", 1000 * 1000 * 1000}, {"g", 1024 * 1024 * 1024},
+		{"mib", 1024 * 1024}, {"mb", 1000 * 1000}, {"m", 1024 * 1024},
+		{"kib", 1024}, {"kb", 1000}, {"k", 1024},
+		{"b", 1},
+	}
+	lower := strings.ToLower(s)
+	mul := int64(1)
+	for _, u := range units {
+		if strings.HasSuffix(lower, u.suffix) {
+			mul = u.mul
+			s = strings.TrimSpace(s[:len(s)-len(u.suffix)])
+			break
+		}
+	}
+	n, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, err
+	}
+	if n < 0 {
+		return 0, fmt.Errorf("must not be negative")
+	}
+	return int64(n * float64(mul)), nil
 }
 
 func MaskAPIKey(s string) string {

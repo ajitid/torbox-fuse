@@ -1,6 +1,6 @@
 # TorBox native FUSE media center
 
-Milestone 1 implements a read-only Go FUSE filesystem for TorBox media. It fetches cached TorBox downloads, classifies videos/subtitles into `movies`, `series`, and `unknown`, stores metadata in bbolt, and streams reads via TorBox HTTP range requests.
+A read-only Go FUSE filesystem for TorBox media. It fetches cached TorBox downloads, classifies videos/subtitles into `movies`, `series`, and `unknown`, stores metadata in bbolt, and streams reads through a bounded disk block cache with sequential read-ahead.
 
 ## Run
 
@@ -23,5 +23,6 @@ See `.env.example`.
 - `DATA_PATH` defaults to `./torbox-media-center.db`.
 - `MOUNT_REFRESH_TIME`: `slowest`, `very_slow`, `slow`, `normal`, `fast`, `ultra_fast`, or `instant`.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
-
-Milestone 2 disk cache/read-ahead is intentionally not implemented yet.
+- `CACHE_PATH` defaults to your OS cache directory plus `torbox-media-center`.
+- `CACHE_SIZE` defaults to `7GiB`; accepts plain bytes or `KiB`/`MiB`/`GiB`/`TiB` suffixes.
+- `READ_AHEAD` defaults to `600MiB`; sequential reads prefetch this many bytes ahead in 4 MiB blocks.

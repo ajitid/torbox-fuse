@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/TorBox-App/torbox-rclone/internal/cache"
 	"github.com/TorBox-App/torbox-rclone/internal/config"
 	"github.com/TorBox-App/torbox-rclone/internal/fusefs"
 	"github.com/TorBox-App/torbox-rclone/internal/refresh"
@@ -34,7 +35,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("mount=%s data=%s refresh=%s api_key=%s allow_other=%v", cfg.MountPath, cfg.DataPath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther)
+	logger.Printf("mount=%s data=%s cache=%s cache_size=%d read_ahead=%d refresh=%s api_key=%s allow_other=%v", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.CacheSize, cfg.ReadAhead, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther)
 	if err := ensureEmptyMountPath(cfg.MountPath); err != nil {
 		return err
 	}
@@ -43,6 +44,10 @@ func run() error {
 		return err
 	}
 	defer st.Close()
+	bc, err := cache.New(cfg.CachePath, cfg.CacheSize, cfg.ReadAhead)
+	if err != nil {
+		return fmt.Errorf("open cache: %w", err)
+	}
 	client := torbox.New(cfg.APIKey, cfg.Version)
 	mgr := refresh.New(client, st, logger)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -52,12 +57,11 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initial refresh failed: %w", err)
 	}
-	root := fusefs.New(records, client)
+	root := fusefs.New(records, client, bc)
 	server, err := root.Mount(cfg.MountPath, cfg.AllowOther, logger)
 	if err != nil {
 		return fmt.Errorf("mount failed: %w", err)
 	}
-	defer server.Unmount()
 	logger.Printf("mounted on %s with %d files", cfg.MountPath, len(records))
 	go func() {
 		ticker := time.NewTicker(cfg.RefreshEvery)
@@ -79,7 +83,10 @@ func run() error {
 	}()
 	<-ctx.Done()
 	logger.Printf("unmounting %s", cfg.MountPath)
-	return server.Unmount()
+	if err := server.Unmount(); err != nil {
+		logger.Printf("unmount failed: %v", err)
+	}
+	return nil
 }
 
 func ensureEmptyMountPath(p string) error {

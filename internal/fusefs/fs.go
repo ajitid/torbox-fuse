@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/TorBox-App/torbox-rclone/internal/cache"
 	"github.com/TorBox-App/torbox-rclone/internal/media"
 	"github.com/TorBox-App/torbox-rclone/internal/torbox"
 	"github.com/TorBox-App/torbox-rclone/internal/vfs"
@@ -22,10 +23,11 @@ type FS struct {
 	tree     atomic.Value
 	torbox   *torbox.Client
 	resolver *URLResolver
+	cache    *cache.BlockCache
 }
 
-func New(records []media.FileRecord, c *torbox.Client) *FS {
-	f := &FS{torbox: c, resolver: NewURLResolver(c)}
+func New(records []media.FileRecord, c *torbox.Client, bc *cache.BlockCache) *FS {
+	f := &FS{torbox: c, resolver: NewURLResolver(c), cache: bc}
 	f.tree.Store(vfs.Build(records))
 	return f
 }
@@ -137,16 +139,17 @@ func (h *fileHandle) Read(ctx context.Context, dest []byte, off int64) (fuse.Rea
 			size = int(remain)
 		}
 	}
-	u, err := h.root.resolver.Resolve(ctx, h.rec)
-	if err != nil {
-		return nil, syscall.EIO
+	fetch := func(ctx context.Context, rangeOff int64, rangeSize int) ([]byte, int, error) {
+		u, err := h.root.resolver.Resolve(ctx, h.rec)
+		if err != nil {
+			return nil, 0, err
+		}
+		return h.root.torbox.ReadRange(ctx, u, rangeOff, rangeSize)
 	}
-	b, status, err := h.root.torbox.ReadRange(ctx, u, off, size)
+	b, status, err := h.root.cache.Read(ctx, h.rec, off, size, fetch)
 	if err != nil && expiryStatus(status) {
 		h.root.resolver.Invalidate(h.rec)
-		if u2, e := h.root.resolver.Resolve(ctx, h.rec); e == nil {
-			b, status, err = h.root.torbox.ReadRange(ctx, u2, off, size)
-		}
+		b, _, err = h.root.cache.Read(ctx, h.rec, off, size, fetch)
 	}
 	if err != nil {
 		return nil, syscall.EIO
