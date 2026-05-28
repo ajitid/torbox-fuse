@@ -16,6 +16,7 @@ import (
 	"github.com/TorBox-App/torbox-fuse/internal/cache"
 	"github.com/TorBox-App/torbox-fuse/internal/config"
 	"github.com/TorBox-App/torbox-fuse/internal/fusefs"
+	"github.com/TorBox-App/torbox-fuse/internal/media"
 	"github.com/TorBox-App/torbox-fuse/internal/refresh"
 	"github.com/TorBox-App/torbox-fuse/internal/store"
 	"github.com/TorBox-App/torbox-fuse/internal/torbox"
@@ -80,7 +81,10 @@ func run() error {
 		logger.Printf("%s refresh applied: %d files", reason, len(recs))
 		return len(recs), nil
 	}
-	if _, err := startControlServer(ctx, cfg.ControlSocketPath, logger, refreshOnce); err != nil {
+	listFiles := func(ctx context.Context) ([]media.FileRecord, error) {
+		return st.All(ctx)
+	}
+	if _, err := startControlServer(ctx, cfg.ControlSocketPath, logger, refreshOnce, listFiles); err != nil {
 		return fmt.Errorf("start control socket: %w", err)
 	}
 	go func() {

@@ -14,6 +14,16 @@ The mount directory must exist or be creatable and must be empty. Refresh over t
 curl --unix-socket /tmp/torbox-fuse.sock -X POST http://localhost/refresh
 ```
 
+List stored file metadata over the same socket. The path after `/files` mirrors the mounted folder structure and returns all files under that folder:
+
+```bash
+curl --unix-socket /tmp/torbox-fuse.sock http://localhost/files
+curl --unix-socket /tmp/torbox-fuse.sock http://localhost/files/movies
+curl --unix-socket /tmp/torbox-fuse.sock 'http://localhost/files/movies/1917%20%282019%29/'
+curl --unix-socket /tmp/torbox-fuse.sock 'http://localhost/files/series/Breaking%20Bad/Season%201'
+curl --unix-socket /tmp/torbox-fuse.sock http://localhost/stats
+```
+
 Unmount with Ctrl+C, or manually with:
 
 ```bash
@@ -30,4 +40,4 @@ See `.env.example`.
 - `MOUNT_REFRESH_TIME` defaults to `3h`. Valid values: `24h`, `12h`, `6h`, `3h`, `1h`, or `6min`.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
 - `CACHE_PATH` defaults to your OS cache directory plus `torbox-fuse`.
-- `CONTROL_SOCKET_PATH` defaults to `/tmp/torbox-fuse.sock`; POST `/refresh` over this Unix socket triggers a synchronous refresh.
+- `CONTROL_SOCKET_PATH` defaults to `/tmp/torbox-fuse.sock`; POST `/refresh` triggers a synchronous refresh; GET `/files` returns stored file metadata; GET `/files/<mounted-folder-path>` returns files under that mounted folder path; GET `/stats` returns counts.

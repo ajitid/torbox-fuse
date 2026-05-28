@@ -24,7 +24,7 @@ func Build(records []media.FileRecord) *Tree {
 		t.addDir("/", root)
 	}
 	for _, r := range records {
-		p := recordPath(r)
+		p := RecordPath(r)
 		if p == "" {
 			continue
 		}
@@ -82,7 +82,7 @@ func clean(p string) string {
 	}
 	return p
 }
-func recordPath(r media.FileRecord) string {
+func RecordPath(r media.FileRecord) string {
 	root := r.MetadataRootFolderName
 	fn := r.MetadataFileName
 	if root == "" || fn == "" {
