@@ -58,7 +58,7 @@ func parseTorrentName(raw string) torrentNameParts {
 	spans = mergeSpans(spans)
 
 	title := firstUnmatchedTitle(stem, spans)
-	if title == "" && len(years) > 0 && years[0].start == 0 {
+	if len(years) > 0 && years[0].start == 0 && (title == "" || len(years) > 1) {
 		title = stem[years[0].start:years[0].end]
 		if len(years) == 1 {
 			year = nil

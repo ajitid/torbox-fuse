@@ -122,6 +122,21 @@ func TestClassifyCrazyStupidLoveMovieAndFeaturette(t *testing.T) {
 	assertPtr(t, extra.Years, 2011)
 }
 
+func TestClassify1917WithLanguageAndAudioTags(t *testing.T) {
+	m := Classify(
+		"1917 (2019) 2160p H265 10 bit DV HDR10+ ita eng AC-3 5.1 sub ita eng Licdom.mkv",
+		"1917 (2019) 2160p H265 10 bit DV HDR10+ ita eng AC-3 5.1 sub ita eng Licdom.mkv",
+		"1917 (2019) 2160p H265 10 bit DV HDR10+ ita eng AC-3 5.1 sub ita eng Licdom/1917 (2019) 2160p H265 10 bit DV HDR10+ ita eng AC-3 5.1 sub ita eng Licdom.mkv",
+	)
+	assertMetadata(t, m, Metadata{
+		Title:          "1917",
+		MediaType:      "movie",
+		RootFolderName: "1917 (2019)",
+		FileName:       "1917 (2019).mkv",
+	})
+	assertPtr(t, m.Years, 2019)
+}
+
 func TestParseTorrentNameYearLikeTitle1917(t *testing.T) {
 	p := parseTorrentName("1917.2019.1080p.BluRay.x265.mkv")
 	if p.Title != "1917" {
