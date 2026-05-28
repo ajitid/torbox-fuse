@@ -19,6 +19,7 @@ import (
 	"github.com/TorBox-App/torbox-rclone/internal/refresh"
 	"github.com/TorBox-App/torbox-rclone/internal/store"
 	"github.com/TorBox-App/torbox-rclone/internal/torbox"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -32,6 +33,9 @@ func run() error {
 		return errors.New("native FUSE mount is not supported on Windows")
 	}
 	logger := log.New(os.Stderr, "torbox-media-center: ", log.LstdFlags)
+	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("load .env: %w", err)
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err
