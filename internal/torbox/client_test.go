@@ -15,7 +15,7 @@ func TestListDownloadsPaginationAndResolveAndRange(t *testing.T) {
 	mux.HandleFunc("/torrents/mylist", func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Query().Get("offset") {
 		case "0":
-			fmt.Fprint(w, `{"data":[{"id":1,"name":"Item","hash":"h","cached":true,"files":[{"id":2,"name":"Item/Movie.mkv","short_name":"Movie.mkv","size":4,"mimetype":"video/x-matroska"}]}]}`)
+			fmt.Fprint(w, `{"data":[{"id":1,"name":"Item","hash":"h","cached":true,"created_at":"2024-10-21T20:47:03Z","files":[{"id":2,"name":"Item/Movie.mkv","short_name":"Movie.mkv","size":4,"mimetype":"video/x-matroska"}]}]}`)
 		default:
 			fmt.Fprint(w, `{"data":[]}`)
 		}
@@ -37,7 +37,7 @@ func TestListDownloadsPaginationAndResolveAndRange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 1 || items[0].ID != "1" || items[0].Files[0].ID != "2" {
+	if len(items) != 1 || items[0].ID != "1" || items[0].Files[0].ID != "2" || items[0].AddedAt.IsZero() {
 		t.Fatalf("unexpected %#v", items)
 	}
 	u, err := c.ResolveDownloadURL(context.Background(), c.PermanentDownloadURL(DownloadTorrent, items[0], items[0].Files[0]))

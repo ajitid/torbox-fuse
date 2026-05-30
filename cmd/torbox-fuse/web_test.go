@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/TorBox-App/torbox-fuse/internal/media"
 	"github.com/TorBox-App/torbox-fuse/internal/torbox"
@@ -48,6 +49,54 @@ func TestWebTorrentsGroupsAcceptedTorrentFiles(t *testing.T) {
 	body := res.Body.String()
 	if !strings.Contains(body, "Dune Pack") || strings.Contains(body, "Usenet Movie") {
 		t.Fatalf("unexpected torrents body: %s", body)
+	}
+}
+
+func TestWebTorrentsFiltersBySearchQuery(t *testing.T) {
+	h := newWebHandler(noRefresh, testFiles, noAdd, noDelete)
+	res := httptest.NewRecorder()
+	h.ServeHTTP(res, httptest.NewRequest(http.MethodGet, "/torrents?q=breaking", nil))
+	if res.Code != http.StatusOK {
+		t.Fatalf("status = %d", res.Code)
+	}
+	body := res.Body.String()
+	if !strings.Contains(body, "Breaking Bad") || strings.Contains(body, "Dune Pack") {
+		t.Fatalf("unexpected filtered body: %s", body)
+	}
+}
+
+func TestFilterTorrentSummariesMatchesFilePath(t *testing.T) {
+	summaries := groupTorrentSummaries([]media.FileRecord{
+		{ItemID: "t1", Type: torbox.DownloadTorrent, FolderName: "Dune Pack", FileName: "Dune.mkv", OriginalPath: "Dune/Dune.mkv", MetadataRootFolderName: "Dune (2021)", MetadataFileName: "Dune (2021).mkv"},
+		{ItemID: "t2", Type: torbox.DownloadTorrent, FolderName: "Breaking Bad", FileName: "Pilot.mkv", OriginalPath: "Breaking Bad/Pilot.mkv"},
+	})
+	filtered := filterTorrentSummaries(summaries, "2021")
+	if len(filtered) != 1 || filtered[0].ID != "t1" {
+		t.Fatalf("unexpected filtered summaries %#v", filtered)
+	}
+}
+
+func TestFilterTorrentSummariesMatchesQueryTokensAcrossFields(t *testing.T) {
+	summaries := groupTorrentSummaries([]media.FileRecord{
+		{ItemID: "t1", Type: torbox.DownloadTorrent, FolderName: "The Bear", FileName: "The.Bear.S01E01.1080p.WEB-DL.mkv", OriginalPath: "The Bear/The.Bear.S01E01.1080p.WEB-DL.mkv"},
+		{ItemID: "t2", Type: torbox.DownloadTorrent, FolderName: "Breaking Bad", FileName: "Breaking.Bad.S01E01.1080p.mkv", OriginalPath: "Breaking Bad/Breaking.Bad.S01E01.1080p.mkv"},
+	})
+	filtered := filterTorrentSummaries(summaries, "the bear 1080")
+	if len(filtered) != 1 || filtered[0].ID != "t1" {
+		t.Fatalf("unexpected filtered summaries %#v", filtered)
+	}
+}
+
+func TestFilterTorrentSummariesRanksBetterMatchesFirst(t *testing.T) {
+	oldTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	newTime := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
+	summaries := groupTorrentSummaries([]media.FileRecord{
+		{ItemID: "new", Type: torbox.DownloadTorrent, FolderName: "Movie Collection", FileName: "Apollo.mkv", OriginalPath: "Movie Collection/Apollo.mkv", ItemAddedAt: newTime},
+		{ItemID: "old", Type: torbox.DownloadTorrent, FolderName: "Apollo 13", FileName: "Feature.mkv", OriginalPath: "Apollo 13/Feature.mkv", ItemAddedAt: oldTime},
+	})
+	filtered := filterTorrentSummaries(summaries, "apollo")
+	if len(filtered) != 2 || filtered[0].ID != "old" || filtered[1].ID != "new" {
+		t.Fatalf("unexpected ranked summaries %#v", filtered)
 	}
 }
 
@@ -105,10 +154,22 @@ func TestBuildStats(t *testing.T) {
 	}
 }
 
+func TestGroupTorrentSummariesSortsNewestFirst(t *testing.T) {
+	oldTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	newTime := time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC)
+	summaries := groupTorrentSummaries([]media.FileRecord{
+		{ItemID: "old", Type: torbox.DownloadTorrent, FolderName: "A Old", ItemAddedAt: oldTime, FileSize: 1},
+		{ItemID: "new", Type: torbox.DownloadTorrent, FolderName: "Z New", ItemAddedAt: newTime, FileSize: 1},
+	})
+	if len(summaries) != 2 || summaries[0].ID != "new" || summaries[1].ID != "old" {
+		t.Fatalf("unexpected order %#v", summaries)
+	}
+}
+
 func testFiles(context.Context) ([]media.FileRecord, error) {
 	return []media.FileRecord{
-		{Key: "dune", ItemID: "t1", Type: torbox.DownloadTorrent, FolderName: "Dune Pack", FileSize: 100, MetadataMediaType: "movie", MetadataRootFolderName: "Dune (2021)", MetadataFileName: "Dune (2021).mkv", OriginalPath: "Dune/Dune.mkv"},
-		{Key: "bb", ItemID: "t2", Type: torbox.DownloadTorrent, FolderName: "Breaking Bad", FileSize: 200, MetadataMediaType: "series", MetadataRootFolderName: "Breaking Bad", MetadataFolderName: "Season 1", MetadataFileName: "Breaking Bad - S01E01.mkv"},
+		{Key: "dune", ItemID: "t1", Type: torbox.DownloadTorrent, ItemAddedAt: time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC), FolderName: "Dune Pack", FileSize: 100, MetadataMediaType: "movie", MetadataRootFolderName: "Dune (2021)", MetadataFileName: "Dune (2021).mkv", OriginalPath: "Dune/Dune.mkv"},
+		{Key: "bb", ItemID: "t2", Type: torbox.DownloadTorrent, ItemAddedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), FolderName: "Breaking Bad", FileSize: 200, MetadataMediaType: "series", MetadataRootFolderName: "Breaking Bad", MetadataFolderName: "Season 1", MetadataFileName: "Breaking Bad - S01E01.mkv"},
 		{Key: "usenet", ItemID: "u1", Type: torbox.DownloadUsenet, FolderName: "Usenet Movie", FileSize: 300, MetadataMediaType: "movie", MetadataRootFolderName: "Usenet Movie", MetadataFileName: "Usenet Movie.mkv"},
 	}, nil
 }

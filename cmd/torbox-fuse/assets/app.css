@@ -28,9 +28,15 @@ h1 { margin: 0; }
 .stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .stat { background: #e0f2fe; color: #075985; border-radius: 999px; padding: 4px 10px; font-size: 13px; }
 .breadcrumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.torrent-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.form-card h2 { margin-top: 0; }
 .form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
 .form-row label { flex: 1 1 280px; min-width: 0; }
-input[type="text"] { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; }
+.torrent-form { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 8px 0; width: max-content; max-width: 100%; }
+.torrent-form label { flex: 0 0 auto; width: min(420px, calc(100vw - 190px)); display: flex; flex-direction: column; gap: 6px; margin-right: 12px; font-weight: 500; }
+.torrent-form .button { flex: 0 0 auto; min-height: 40px; }
+input[type="text"], input[type="search"] { box-sizing: border-box; width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font: inherit; color: #0f172a; background: white; }
+input[type="text"]:focus, input[type="search"]:focus { outline: 2px solid #bfdbfe; border-color: #2563eb; }
 .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 @media (max-width: 640px) {
   .container { width: min(100% - 20px, 1280px); padding-top: 12px; }
@@ -40,6 +46,9 @@ input[type="text"] { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px;
   .nav { flex: 0 0 auto; }
   .nav a, .actions form, .actions .button { flex: 0 0 auto; justify-content: center; }
   .card { padding: 14px; }
+  .torrent-controls { grid-template-columns: 1fr; gap: 0; }
+  .torrent-form { width: 100%; }
+  .torrent-form label { width: 100%; flex-basis: 100%; margin-right: 0; }
   .table { min-width: 0; border-radius: 0; }
   .table thead { display: none; }
   .table, .table tbody, .table tr, .table td { display: block; width: 100%; }

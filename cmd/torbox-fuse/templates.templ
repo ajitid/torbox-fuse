@@ -108,12 +108,21 @@ templ mountPage(data mountPageData) {
 templ torrentsPage(data torrentsPageData) {
 	@layout("Torrents", "torrents", data.Stats) {
 		@errorBlock(data.Error)
-		<div class="card">
-			<h2>Add torrent</h2>
-			<form method="post" action="/torrents" class="form-row">
-				<label>Magnet link<br/><input type="text" name="magnet" required placeholder="magnet:?xt=urn:btih:..."/></label>
-				<button class="button primary" type="submit">Add</button>
-			</form>
+		<div class="torrent-controls">
+			<div class="card form-card">
+				<h2>Add torrent</h2>
+				<form method="post" action="/torrents" class="torrent-form add-torrent-form">
+					<label><span>Magnet link</span><input type="text" name="magnet" required placeholder="magnet:?xt=urn:btih:..."/></label>
+					<button class="button primary" type="submit">Add</button>
+				</form>
+			</div>
+			<div class="card form-card">
+				<h2>Search torrents</h2>
+				<form method="get" action="/torrents" class="torrent-form search-torrent-form">
+					<label><span>Filter</span><input type="search" name="q" value={ data.Query } placeholder="Name, ID, hash, or file path"/></label>
+					<button class="button primary" type="submit">Search</button>
+				</form>
+			</div>
 		</div>
 		for _, torrent := range data.Torrents {
 			<div class="card">
@@ -132,7 +141,13 @@ templ torrentsPage(data torrentsPageData) {
 			</div>
 		}
 		if len(data.Torrents) == 0 {
-			<div class="card"><p class="muted">No accepted torrent media/subtitle files are stored yet.</p></div>
+			<div class="card">
+				if data.Query != "" {
+					<p class="muted">No torrents match your search.</p>
+				} else {
+					<p class="muted">No accepted torrent media/subtitle files are stored yet.</p>
+				}
+			</div>
 		}
 	}
 }

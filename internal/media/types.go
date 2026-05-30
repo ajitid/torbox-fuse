@@ -3,6 +3,7 @@ package media
 import (
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/TorBox-App/torbox-fuse/internal/torbox"
 )
@@ -11,6 +12,7 @@ type FileRecord struct {
 	Key                     string              `json:"key"`
 	ItemID                  string              `json:"item_id"`
 	Type                    torbox.DownloadType `json:"type"`
+	ItemAddedAt             time.Time           `json:"item_added_at,omitempty"`
 	FolderName              string              `json:"folder_name"`
 	FolderHash              string              `json:"folder_hash"`
 	FileID                  string              `json:"file_id"`

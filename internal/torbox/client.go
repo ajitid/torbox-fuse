@@ -27,11 +27,12 @@ func AllDownloadTypes() []DownloadType {
 }
 
 type Item struct {
-	ID     string
-	Name   string
-	Hash   string
-	Cached bool
-	Files  []RemoteFile
+	ID      string
+	Name    string
+	Hash    string
+	Cached  bool
+	AddedAt time.Time
+	Files   []RemoteFile
 }
 type RemoteFile struct {
 	ID        string
@@ -69,11 +70,12 @@ type CreatedTorrent struct {
 	Hash      string `json:"hash"`
 }
 type rawItem struct {
-	ID     any       `json:"id"`
-	Name   string    `json:"name"`
-	Hash   string    `json:"hash"`
-	Cached bool      `json:"cached"`
-	Files  []rawFile `json:"files"`
+	ID      any       `json:"id"`
+	Name    string    `json:"name"`
+	Hash    string    `json:"hash"`
+	Cached  bool      `json:"cached"`
+	AddedAt string    `json:"created_at"`
+	Files   []rawFile `json:"files"`
 }
 type rawFile struct {
 	ID        any    `json:"id"`
@@ -119,7 +121,7 @@ func (c *Client) ListDownloads(ctx context.Context, typ DownloadType) ([]Item, e
 			break
 		}
 		for _, ri := range decoded.Data {
-			it := Item{ID: stringifyID(ri.ID), Name: ri.Name, Hash: ri.Hash, Cached: ri.Cached}
+			it := Item{ID: stringifyID(ri.ID), Name: ri.Name, Hash: ri.Hash, Cached: ri.Cached, AddedAt: parseAPITime(ri.AddedAt)}
 			for _, rf := range ri.Files {
 				it.Files = append(it.Files, RemoteFile{ID: stringifyID(rf.ID), Name: rf.Name, ShortName: rf.ShortName, Size: rf.Size, MIMEType: rf.MIMEType})
 			}
@@ -268,6 +270,21 @@ func (c *Client) ReadRange(ctx context.Context, u string, off int64, size int) (
 		b = b[:size]
 	}
 	return b, res.StatusCode, nil
+}
+
+func parseAPITime(vals ...string) time.Time {
+	for _, v := range vals {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			continue
+		}
+		for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05Z"} {
+			if t, err := time.Parse(layout, v); err == nil {
+				return t.UTC()
+			}
+		}
+	}
+	return time.Time{}
 }
 
 func stringifyID(v any) string {

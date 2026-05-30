@@ -100,7 +100,7 @@ func BuildSubtitleRecord(c *torbox.Client, typ torbox.DownloadType, item torbox.
 func baseRecord(c *torbox.Client, typ torbox.DownloadType, item torbox.Item, f torbox.RemoteFile) FileRecord {
 	ext := filepath.Ext(f.ShortName)
 	key := string(typ) + "/" + item.ID + "/" + f.ID
-	return FileRecord{Key: key, ItemID: item.ID, Type: typ, FolderName: item.Name, FolderHash: item.Hash, FileID: f.ID, FileName: f.ShortName, FileSize: f.Size, MIMEType: f.MIMEType, OriginalPath: f.Name, DownloadLink: c.PermanentDownloadURL(typ, item, f), Extension: ext}
+	return FileRecord{Key: key, ItemID: item.ID, Type: typ, ItemAddedAt: item.AddedAt, FolderName: item.Name, FolderHash: item.Hash, FileID: f.ID, FileName: f.ShortName, FileSize: f.Size, MIMEType: f.MIMEType, OriginalPath: f.Name, DownloadLink: c.PermanentDownloadURL(typ, item, f), Extension: ext}
 }
 func applyMetadata(r *FileRecord, md Metadata) {
 	r.MetadataTitle = md.Title
