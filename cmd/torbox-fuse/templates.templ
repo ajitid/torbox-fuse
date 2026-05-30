@@ -12,7 +12,7 @@ templ layout(title string, active string, stats fileStats) {
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<title>{ title } · TorBox Fuse</title>
+			<title>{ title } · TorBoard</title>
 			<link rel="stylesheet" href="/assets/preflight.css"/>
 			<link rel="stylesheet" href="/assets/app.css"/>
 		</head>
@@ -20,8 +20,7 @@ templ layout(title string, active string, stats fileStats) {
 			<main class="container">
 				<header class="header">
 					<div>
-						<h1>TorBox Fuse</h1>
-						<p class="muted">Local torrent and mounted media management</p>
+						<h1>TorBoard</h1>
 					</div>
 					<div class="actions">
 						<nav class="nav">
@@ -64,33 +63,33 @@ templ mountPage(data mountPageData) {
 		</div>
 		<div class="card">
 			<h2>{ data.Path }</h2>
-			<table class="table">
+			<table class="table mount-table">
 				<thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Source</th></tr></thead>
 				<tbody>
 					for _, entry := range data.Entries {
 						<tr>
-							<td>
+							<td data-label="Name">
 								if entry.IsDir {
 									<a href={ templ.URL("/mount" + entry.Path) }>📁 { entry.Name }</a>
 								} else {
-									<span>🎬 { entry.Name }</span>
+									<span>{ mountEntryIcon(entry) } { entry.Name }</span>
 								}
 							</td>
-							<td>
+							<td data-label="Type">
 								if entry.IsDir {
 									<span>directory</span>
 								} else {
 									<span>file</span>
 								}
 							</td>
-							<td>
+							<td data-label="Size">
 								if entry.IsDir {
 									<span>—</span>
 								} else {
 									<span>{ formatBytes(entry.Size) }</span>
 								}
 							</td>
-							<td>
+							<td data-label="Source">
 								if entry.File != nil {
 									<span class="muted">{ entry.File.FolderName }</span>
 								}
@@ -154,14 +153,14 @@ templ torrentPage(data torrentPageData) {
 					</form>
 				}
 			</div>
-			<table class="table">
+			<table class="table torrent-files-table">
 				<thead><tr><th>Mounted path</th><th>Original path</th><th>Size</th></tr></thead>
 				<tbody>
 					for _, file := range data.Torrent.Files {
 						<tr>
-							<td>{ vfs.RecordPath(file) }</td>
-							<td class="muted">{ file.OriginalPath }</td>
-							<td>{ formatBytes(file.FileSize) }</td>
+							<td data-label="Mounted path">{ vfs.RecordPath(file) }</td>
+							<td data-label="Original path" class="muted">{ file.OriginalPath }</td>
+							<td data-label="Size">{ formatBytes(file.FileSize) }</td>
 						</tr>
 					}
 				</tbody>

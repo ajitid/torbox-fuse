@@ -286,6 +286,16 @@ func groupTorrentSummaries(files []media.FileRecord) []torrentSummary {
 	return out
 }
 
+func mountEntryIcon(entry mountEntry) string {
+	if entry.IsDir {
+		return "📁"
+	}
+	if entry.File != nil && media.IsSubtitleMIME(entry.File.MIMEType) {
+		return "💬"
+	}
+	return "🎬"
+}
+
 func buildStats(files []media.FileRecord) fileStats {
 	stats := fileStats{Files: len(files)}
 	for _, f := range files {
