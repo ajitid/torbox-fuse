@@ -17,6 +17,7 @@ import (
 	"github.com/TorBox-App/torbox-fuse/internal/config"
 	"github.com/TorBox-App/torbox-fuse/internal/fusefs"
 	"github.com/TorBox-App/torbox-fuse/internal/media"
+	"github.com/TorBox-App/torbox-fuse/internal/plex"
 	"github.com/TorBox-App/torbox-fuse/internal/refresh"
 	"github.com/TorBox-App/torbox-fuse/internal/store"
 	"github.com/TorBox-App/torbox-fuse/internal/torbox"
@@ -56,6 +57,7 @@ func run() error {
 		return fmt.Errorf("open cache: %w", err)
 	}
 	client := torbox.New(cfg.APIKey, cfg.Version)
+	plexClient := plex.New(cfg.PlexBaseURL, cfg.PlexAccessToken)
 	mgr := refresh.New(client, st, logger)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -70,6 +72,7 @@ func run() error {
 		return fmt.Errorf("mount failed: %w", err)
 	}
 	logger.Printf("mounted on %s with %d files", cfg.MountPath, len(records))
+	plexClient.RefreshMountPaths(ctx, cfg.MountPath)
 	refreshOnce := func(ctx context.Context, reason string) (int, error) {
 		logger.Printf("%s refresh starting", reason)
 		recs, err := mgr.Run(ctx)
@@ -78,6 +81,7 @@ func run() error {
 			return 0, err
 		}
 		root.Swap(recs)
+		plexClient.RefreshMountPaths(ctx, cfg.MountPath)
 		logger.Printf("%s refresh applied: %d files", reason, len(recs))
 		return len(recs), nil
 	}

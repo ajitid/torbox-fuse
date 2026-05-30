@@ -14,15 +14,17 @@ const (
 )
 
 type Config struct {
-	APIKey       string
-	MountPath    string
-	DataPath     string
-	RefreshEvery time.Duration
-	AllowOther   bool
-	Version      string
-	CachePath    string
-	CacheSize    int64
-	ReadAhead    int64
+	APIKey          string
+	MountPath       string
+	DataPath        string
+	RefreshEvery    time.Duration
+	AllowOther      bool
+	Version         string
+	CachePath       string
+	CacheSize       int64
+	ReadAhead       int64
+	PlexAccessToken string
+	PlexBaseURL     string
 }
 
 func Load() (Config, error) {
@@ -32,6 +34,7 @@ func Load() (Config, error) {
 	}
 	mountPath := envDefault("MOUNT_PATH", "./torbox")
 	dataPath := envDefault("DATA_PATH", "./torbox-fuse.db")
+	plexAccessToken := strings.TrimSpace(os.Getenv("PLEX_ACCESS_TOKEN"))
 	refresh, err := parseRefreshTime(envDefault("MOUNT_REFRESH_TIME", "3h"))
 	if err != nil {
 		return Config{}, err
@@ -41,15 +44,17 @@ func Load() (Config, error) {
 		cacheRoot = os.TempDir()
 	}
 	return Config{
-		APIKey:       apiKey,
-		MountPath:    mountPath,
-		DataPath:     dataPath,
-		RefreshEvery: refresh,
-		AllowOther:   parseBoolEnv(os.Getenv("FUSE_ALLOW_OTHER")),
-		Version:      "dev",
-		CachePath:    envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-fuse")),
-		CacheSize:    DefaultCacheSize,
-		ReadAhead:    DefaultReadAhead,
+		APIKey:          apiKey,
+		MountPath:       mountPath,
+		DataPath:        dataPath,
+		RefreshEvery:    refresh,
+		AllowOther:      parseBoolEnv(os.Getenv("FUSE_ALLOW_OTHER")),
+		Version:         "dev",
+		CachePath:       envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-fuse")),
+		CacheSize:       DefaultCacheSize,
+		ReadAhead:       DefaultReadAhead,
+		PlexAccessToken: plexAccessToken,
+		PlexBaseURL:     envDefault("PLEX_BASE_URL", "http://127.0.0.1:32400"),
 	}, nil
 }
 

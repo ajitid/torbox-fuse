@@ -40,4 +40,7 @@ See `.env.example`.
 - `MOUNT_REFRESH_TIME` defaults to `3h`. Valid values: `24h`, `12h`, `6h`, `3h`, `1h`, or `6min`.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
 - `CACHE_PATH` defaults to your OS cache directory plus `torbox-fuse`.
+- `PLEX_ACCESS_TOKEN` is optional. When set, torbox-fuse requests Plex partial scans for `${MOUNT_PATH}/movies` and `${MOUNT_PATH}/series` after TorBox refreshes.
+- `PLEX_BASE_URL` defaults to `http://127.0.0.1:32400`.
+- Plex refresh failures are ignored by design.
 - The web UI listens on all interfaces at `http://0.0.0.0:3939`.
