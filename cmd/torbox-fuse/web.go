@@ -28,7 +28,7 @@ type deleteTorrentFunc func(context.Context, string) error
 var webAssets embed.FS
 
 func startWebServer(ctx context.Context, logger *log.Logger, refresh refreshFunc, list listFunc, add addTorrentFunc, deleteTorrent deleteTorrentFunc) (*http.Server, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:3939")
+	ln, err := net.Listen("tcp", "0.0.0.0:3939")
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func startWebServer(ctx context.Context, logger *log.Logger, refresh refreshFunc
 		_ = srv.Shutdown(context.Background())
 	}()
 	go func() {
-		logger.Printf("web UI listening on http://127.0.0.1:3939")
+		logger.Printf("web UI listening on http://0.0.0.0:3939")
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Printf("web UI stopped: %v", err)
 		}

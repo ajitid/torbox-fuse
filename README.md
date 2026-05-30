@@ -10,10 +10,10 @@ TORBOX_API_KEY=... MOUNT_PATH=/tmp/torbox-test DATA_PATH=/tmp/torbox-test.db go 
 
 The mount directory must exist or be creatable and must be empty.
 
-Open the local web UI at:
+Open the web UI at:
 
 ```text
-http://127.0.0.1:3939
+http://0.0.0.0:3939
 ```
 
 The UI provides:
@@ -40,4 +40,4 @@ See `.env.example`.
 - `MOUNT_REFRESH_TIME` defaults to `3h`. Valid values: `24h`, `12h`, `6h`, `3h`, `1h`, or `6min`.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
 - `CACHE_PATH` defaults to your OS cache directory plus `torbox-fuse`.
-- The web UI is fixed to localhost at `http://127.0.0.1:3939`.
+- The web UI listens on all interfaces at `http://0.0.0.0:3939`.
