@@ -11,20 +11,21 @@ import (
 )
 
 type Manager struct {
-	client *torbox.Client
-	store  *store.Store
-	log    *log.Logger
-	mu     sync.Mutex
+	client  *torbox.Client
+	store   *store.Store
+	log     *log.Logger
+	mu      sync.Mutex
+	sources []torbox.DownloadType
 }
 
-func New(c *torbox.Client, s *store.Store, l *log.Logger) *Manager {
-	return &Manager{client: c, store: s, log: l}
+func New(c *torbox.Client, s *store.Store, l *log.Logger, sources []torbox.DownloadType) *Manager {
+	return &Manager{client: c, store: s, log: l, sources: sources}
 }
 func (m *Manager) Run(ctx context.Context) ([]media.FileRecord, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var all []media.FileRecord
-	for _, typ := range torbox.AllDownloadTypes() {
+	for _, typ := range m.sources {
 		items, err := m.client.ListDownloads(ctx, typ)
 		if err != nil {
 			return nil, err

@@ -26,6 +26,19 @@ func AllDownloadTypes() []DownloadType {
 	return []DownloadType{DownloadTorrent, DownloadUsenet, DownloadWebDL}
 }
 
+func ParseDownloadType(s string) (DownloadType, bool) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "torrent":
+		return DownloadTorrent, true
+	case "usenet":
+		return DownloadUsenet, true
+	case "webdl":
+		return DownloadWebDL, true
+	default:
+		return "", false
+	}
+}
+
 type Item struct {
 	ID      string
 	Name    string

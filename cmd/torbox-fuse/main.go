@@ -43,7 +43,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v web=http://0.0.0.0:3939", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther)
+	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v sources=%v web=http://0.0.0.0:3939", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther, cfg.Sources)
 	if err := ensureEmptyMountPath(cfg.MountPath); err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func run() error {
 	}
 	client := torbox.New(cfg.APIKey, cfg.Version)
 	plexClient := plex.New(cfg.PlexBaseURL, cfg.PlexAccessToken)
-	mgr := refresh.New(client, st, logger)
+	mgr := refresh.New(client, st, logger, cfg.Sources)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	logger.Printf("initial refresh starting")

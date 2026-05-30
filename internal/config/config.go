@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/TorBox-App/torbox-fuse/internal/torbox"
 )
 
 const (
@@ -25,6 +27,7 @@ type Config struct {
 	ReadAhead       int64
 	PlexAccessToken string
 	PlexBaseURL     string
+	Sources         []torbox.DownloadType
 }
 
 func Load() (Config, error) {
@@ -43,6 +46,10 @@ func Load() (Config, error) {
 	if cacheRoot == "" {
 		cacheRoot = os.TempDir()
 	}
+	sources, err := parseSources(envDefault("TORBOX_SOURCES", "torrent"))
+	if err != nil {
+		return Config{}, err
+	}
 	return Config{
 		APIKey:          apiKey,
 		MountPath:       mountPath,
@@ -55,6 +62,7 @@ func Load() (Config, error) {
 		ReadAhead:       DefaultReadAhead,
 		PlexAccessToken: plexAccessToken,
 		PlexBaseURL:     envDefault("PLEX_BASE_URL", "http://127.0.0.1:32400"),
+		Sources:         sources,
 	}, nil
 }
 
@@ -82,6 +90,32 @@ func parseRefreshTime(v string) (time.Duration, error) {
 	default:
 		return 0, fmt.Errorf("invalid MOUNT_REFRESH_TIME %q (valid values: 24h, 12h, 6h, 3h, 1h, 6min)", v)
 	}
+}
+
+func parseSources(v string) ([]torbox.DownloadType, error) {
+	if strings.TrimSpace(v) == "" {
+		return nil, fmt.Errorf("TORBOX_SOURCES must not be empty (valid: torrent, usenet, webdl)")
+	}
+	seen := map[torbox.DownloadType]bool{}
+	var out []torbox.DownloadType
+	for _, s := range strings.Split(v, ",") {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		dt, ok := torbox.ParseDownloadType(s)
+		if !ok {
+			return nil, fmt.Errorf("invalid TORBOX_SOURCES value %q (valid: torrent, usenet, webdl)", s)
+		}
+		if !seen[dt] {
+			seen[dt] = true
+			out = append(out, dt)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("TORBOX_SOURCES must not be empty (valid: torrent, usenet, webdl)")
+	}
+	return out, nil
 }
 
 func parseBoolEnv(v string) bool {
