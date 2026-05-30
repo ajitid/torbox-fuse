@@ -1,10 +1,12 @@
 package torbox
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -53,6 +55,18 @@ func (c *Client) SetBaseURL(u string) { c.baseURL = strings.TrimRight(u, "/") }
 
 type apiResp struct {
 	Data []rawItem `json:"data"`
+}
+
+type mutationResp struct {
+	Success *bool           `json:"success"`
+	Detail  string          `json:"detail"`
+	Data    json.RawMessage `json:"data"`
+}
+
+type CreatedTorrent struct {
+	TorrentID any    `json:"torrent_id"`
+	AuthID    string `json:"auth_id"`
+	Hash      string `json:"hash"`
 }
 type rawItem struct {
 	ID     any       `json:"id"`
@@ -116,6 +130,78 @@ func (c *Client) ListDownloads(ctx context.Context, typ DownloadType) ([]Item, e
 		}
 	}
 	return out, nil
+}
+
+func (c *Client) CreateTorrent(ctx context.Context, magnet string) (CreatedTorrent, error) {
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	if err := mw.WriteField("magnet", magnet); err != nil {
+		return CreatedTorrent{}, err
+	}
+	if err := mw.Close(); err != nil {
+		return CreatedTorrent{}, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/torrents/createtorrent", &body)
+	if err != nil {
+		return CreatedTorrent{}, err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	resBody, err := c.doMutation(req, "create torrent")
+	if err != nil {
+		return CreatedTorrent{}, err
+	}
+	var out CreatedTorrent
+	if len(resBody) > 0 && string(resBody) != "null" {
+		_ = json.Unmarshal(resBody, &out)
+	}
+	return out, nil
+}
+
+func (c *Client) DeleteTorrent(ctx context.Context, torrentID string) error {
+	body, err := json.Marshal(map[string]any{"operation": "delete", "torrent_id": torrentID, "all": false})
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/torrents/controltorrent", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("Content-Type", "application/json")
+	_, err = c.doMutation(req, "delete torrent")
+	return err
+}
+
+func (c *Client) doMutation(req *http.Request, op string) (json.RawMessage, error) {
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	body, rerr := io.ReadAll(res.Body)
+	res.Body.Close()
+	if rerr != nil {
+		return nil, rerr
+	}
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return nil, fmt.Errorf("%s: HTTP %d: %s", op, res.StatusCode, strings.TrimSpace(string(body)))
+	}
+	if strings.TrimSpace(string(body)) == "" {
+		return nil, nil
+	}
+	var decoded mutationResp
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return nil, err
+	}
+	if decoded.Success != nil && !*decoded.Success {
+		if decoded.Detail == "" {
+			decoded.Detail = strings.TrimSpace(string(body))
+		}
+		return nil, fmt.Errorf("%s: %s", op, decoded.Detail)
+	}
+	return decoded.Data, nil
 }
 
 func (c *Client) PermanentDownloadURL(typ DownloadType, item Item, file RemoteFile) string {

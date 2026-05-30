@@ -1,0 +1,23 @@
+:root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f8fafc; color: #0f172a; }
+body { margin: 0; background: #f8fafc; }
+a { color: #2563eb; text-decoration: none; } a:hover { text-decoration: underline; }
+.container { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 24px 0 48px; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.nav { display: flex; align-items: center; gap: 8px; }
+.nav a, .button { display: inline-flex; align-items: center; border-radius: 8px; border: 1px solid #cbd5e1; background: white; padding: 8px 12px; color: #0f172a; font-weight: 600; font-size: 14px; cursor: pointer; }
+.nav a.active, .button.primary { background: #2563eb; border-color: #2563eb; color: white; }
+.button.danger { background: #dc2626; border-color: #dc2626; color: white; }
+.button:hover { text-decoration: none; filter: brightness(0.98); }
+.card { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); margin-bottom: 16px; }
+.table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; }
+.table th, .table td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: left; vertical-align: top; }
+.table th { color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; background: #f1f5f9; }
+.table tr:last-child td { border-bottom: 0; }
+.muted { color: #64748b; }
+.error { border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; padding: 12px; border-radius: 10px; margin-bottom: 16px; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.stat { background: #e0f2fe; color: #075985; border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+.breadcrumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+input[type="text"] { border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; min-width: min(520px, 100%); }
+.actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }

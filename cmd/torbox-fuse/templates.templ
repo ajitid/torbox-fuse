@@ -1,0 +1,171 @@
+package main
+
+import (
+	"fmt"
+
+	"github.com/TorBox-App/torbox-fuse/internal/vfs"
+)
+
+templ layout(title string, active string, stats fileStats) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } · TorBox Fuse</title>
+			<link rel="stylesheet" href="/assets/preflight.css"/>
+			<link rel="stylesheet" href="/assets/app.css"/>
+		</head>
+		<body>
+			<main class="container">
+				<header class="header">
+					<div>
+						<h1>TorBox Fuse</h1>
+						<p class="muted">Local torrent and mounted media management</p>
+					</div>
+					<div class="actions">
+						<nav class="nav">
+							<a class={ templ.KV("active", active == "mount") } href="/mount">Mount</a>
+							<a class={ templ.KV("active", active == "torrents") } href="/torrents">Torrents</a>
+						</nav>
+						<form method="post" action="/refresh">
+							<button class="button" type="submit">Refresh</button>
+						</form>
+					</div>
+				</header>
+				<div class="stats">
+					<span class="stat">{ fmt.Sprintf("%d files", stats.Files) }</span>
+					<span class="stat">{ fmt.Sprintf("%d movies", stats.Movies) }</span>
+					<span class="stat">{ fmt.Sprintf("%d series", stats.Series) }</span>
+					<span class="stat">{ fmt.Sprintf("%d unknown", stats.Unknown) }</span>
+				</div>
+				{ children... }
+			</main>
+		</body>
+	</html>
+}
+
+templ errorBlock(msg string) {
+	if msg != "" {
+		<div class="error">{ msg }</div>
+	}
+}
+
+templ mountPage(data mountPageData) {
+	@layout("Mount", "mount", data.Stats) {
+		@errorBlock(data.Error)
+		<div class="breadcrumbs">
+			for i, crumb := range data.Breadcrumbs {
+				if i > 0 {
+					<span class="muted">/</span>
+				}
+				<a href={ templ.URL("/mount" + crumb.Path) }>{ crumb.Name }</a>
+			}
+		</div>
+		<div class="card">
+			<h2>{ data.Path }</h2>
+			<table class="table">
+				<thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Source</th></tr></thead>
+				<tbody>
+					for _, entry := range data.Entries {
+						<tr>
+							<td>
+								if entry.IsDir {
+									<a href={ templ.URL("/mount" + entry.Path) }>📁 { entry.Name }</a>
+								} else {
+									<span>🎬 { entry.Name }</span>
+								}
+							</td>
+							<td>
+								if entry.IsDir {
+									<span>directory</span>
+								} else {
+									<span>file</span>
+								}
+							</td>
+							<td>
+								if entry.IsDir {
+									<span>—</span>
+								} else {
+									<span>{ formatBytes(entry.Size) }</span>
+								}
+							</td>
+							<td>
+								if entry.File != nil {
+									<span class="muted">{ entry.File.FolderName }</span>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+			if len(data.Entries) == 0 {
+				<p class="muted">No entries in this folder.</p>
+			}
+		</div>
+	}
+}
+
+templ torrentsPage(data torrentsPageData) {
+	@layout("Torrents", "torrents", data.Stats) {
+		@errorBlock(data.Error)
+		<div class="card">
+			<h2>Add torrent</h2>
+			<form method="post" action="/torrents" class="form-row">
+				<label>Magnet link<br/><input type="text" name="magnet" required placeholder="magnet:?xt=urn:btih:..."/></label>
+				<button class="button primary" type="submit">Add</button>
+			</form>
+		</div>
+		for _, torrent := range data.Torrents {
+			<div class="card">
+				<div class="header">
+					<div>
+						<h2><a href={ templ.URL("/torrents/" + torrent.ID) }>{ torrent.Name }</a></h2>
+						<p class="muted">{ fmt.Sprintf("%s · %d files · %s", torrent.ID, torrent.FileCount, formatBytes(torrent.Size)) }</p>
+					</div>
+					<form method="post" action={ templ.URL("/torrents/" + torrent.ID + "/delete") } onsubmit="return confirm('Delete this torrent from TorBox?')">
+						<button class="button danger" type="submit">Delete</button>
+					</form>
+				</div>
+				if torrent.Hash != "" {
+					<p class="muted">Hash: { torrent.Hash }</p>
+				}
+			</div>
+		}
+		if len(data.Torrents) == 0 {
+			<div class="card"><p class="muted">No accepted torrent media/subtitle files are stored yet.</p></div>
+		}
+	}
+}
+
+templ torrentPage(data torrentPageData) {
+	@layout(data.Torrent.Name, "torrents", data.Stats) {
+		@errorBlock(data.Error)
+		<p><a href="/torrents">← Back to torrents</a></p>
+		<div class="card">
+			<div class="header">
+				<div>
+					<h2>{ data.Torrent.Name }</h2>
+					<p class="muted">{ fmt.Sprintf("%s · %d files · %s", data.Torrent.ID, data.Torrent.FileCount, formatBytes(data.Torrent.Size)) }</p>
+				</div>
+				if data.Torrent.ID != "" {
+					<form method="post" action={ templ.URL("/torrents/" + data.Torrent.ID + "/delete") } onsubmit="return confirm('Delete this torrent from TorBox?')">
+						<button class="button danger" type="submit">Delete</button>
+					</form>
+				}
+			</div>
+			<table class="table">
+				<thead><tr><th>Mounted path</th><th>Original path</th><th>Size</th></tr></thead>
+				<tbody>
+					for _, file := range data.Torrent.Files {
+						<tr>
+							<td>{ vfs.RecordPath(file) }</td>
+							<td class="muted">{ file.OriginalPath }</td>
+							<td>{ formatBytes(file.FileSize) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}

@@ -42,7 +42,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v control_socket=%s", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther, cfg.ControlSocketPath)
+	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v web=http://127.0.0.1:3939", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther)
 	if err := ensureEmptyMountPath(cfg.MountPath); err != nil {
 		return err
 	}
@@ -84,8 +84,22 @@ func run() error {
 	listFiles := func(ctx context.Context) ([]media.FileRecord, error) {
 		return st.All(ctx)
 	}
-	if _, err := startControlServer(ctx, cfg.ControlSocketPath, logger, refreshOnce, listFiles); err != nil {
-		return fmt.Errorf("start control socket: %w", err)
+	addTorrent := func(ctx context.Context, magnet string) error {
+		if _, err := client.CreateTorrent(ctx, magnet); err != nil {
+			return err
+		}
+		_, err := refreshOnce(ctx, "add torrent")
+		return err
+	}
+	deleteTorrent := func(ctx context.Context, id string) error {
+		if err := client.DeleteTorrent(ctx, id); err != nil {
+			return err
+		}
+		_, err := refreshOnce(ctx, "delete torrent")
+		return err
+	}
+	if _, err := startWebServer(ctx, logger, refreshOnce, listFiles, addTorrent, deleteTorrent); err != nil {
+		return fmt.Errorf("start web server: %w", err)
 	}
 	go func() {
 		ticker := time.NewTicker(cfg.RefreshEvery)

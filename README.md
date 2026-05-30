@@ -8,21 +8,21 @@ A read-only Go FUSE filesystem for TorBox media. It fetches cached TorBox downlo
 TORBOX_API_KEY=... MOUNT_PATH=/tmp/torbox-test DATA_PATH=/tmp/torbox-test.db go run ./cmd/torbox-fuse
 ```
 
-The mount directory must exist or be creatable and must be empty. Refresh over the local Unix control socket:
+The mount directory must exist or be creatable and must be empty.
 
-```bash
-curl --unix-socket /tmp/torbox-fuse.sock -X POST http://localhost/refresh
+Open the local web UI at:
+
+```text
+http://127.0.0.1:3939
 ```
 
-List stored file metadata over the same socket. The path after `/files` mirrors the mounted folder structure and returns all files under that folder:
+The UI provides:
 
-```bash
-curl --unix-socket /tmp/torbox-fuse.sock http://localhost/files
-curl --unix-socket /tmp/torbox-fuse.sock http://localhost/files/movies
-curl --unix-socket /tmp/torbox-fuse.sock 'http://localhost/files/movies/1917%20%282019%29/'
-curl --unix-socket /tmp/torbox-fuse.sock 'http://localhost/files/series/Breaking%20Bad/Season%201'
-curl --unix-socket /tmp/torbox-fuse.sock http://localhost/stats
-```
+- mounted folder browsing
+- torrent-wise accepted media/subtitle browsing
+- refresh
+- add torrent by magnet link
+- remove torrent
 
 Unmount with Ctrl+C, or manually with:
 
@@ -40,4 +40,4 @@ See `.env.example`.
 - `MOUNT_REFRESH_TIME` defaults to `3h`. Valid values: `24h`, `12h`, `6h`, `3h`, `1h`, or `6min`.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
 - `CACHE_PATH` defaults to your OS cache directory plus `torbox-fuse`.
-- `CONTROL_SOCKET_PATH` defaults to `/tmp/torbox-fuse.sock`; POST `/refresh` triggers a synchronous refresh; GET `/files` returns stored file metadata; GET `/files/<mounted-folder-path>` returns files under that mounted folder path; GET `/stats` returns counts.
+- The web UI is fixed to localhost at `http://127.0.0.1:3939`.
