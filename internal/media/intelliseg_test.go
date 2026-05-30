@@ -1,6 +1,9 @@
 package media
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestClassifyMovie(t *testing.T) {
 	m := Classify("Inception 2010 1080p", "Inception.2010.1080p.mkv", "Inception.2010.1080p.mkv")
@@ -11,7 +14,7 @@ func TestClassifyMovie(t *testing.T) {
 
 func TestClassifySeries(t *testing.T) {
 	m := Classify("Show", "Show.S01E02.mkv", "Show/Season 1/Show.S01E02.mkv")
-	if m.MediaType != "series" || m.Season == nil || *m.Season != 1 || m.Episode == nil || *m.Episode != 2 || m.FolderName != "Season 1" {
+	if m.MediaType != "series" || m.Season == nil || *m.Season != 1 || m.Episode == nil || *m.Episode != 2 || m.FolderName != "Season 01" || m.FileName != "Show - s01e02.mkv" {
 		t.Fatalf("unexpected: %#v", m)
 	}
 }
@@ -47,9 +50,9 @@ func TestClassifyRealHomelandEpisode(t *testing.T) {
 	assertMetadata(t, m, Metadata{
 		Title:          "Homeland",
 		MediaType:      "series",
-		RootFolderName: "Homeland",
-		FolderName:     "Season 4",
-		FileName:       "Homeland S04E12.mkv",
+		RootFolderName: "Homeland (2011)",
+		FolderName:     "Season 04",
+		FileName:       "Homeland (2011) - s04e12.mkv",
 	})
 	assertPtr(t, m.Years, 2011)
 	assertPtr(t, m.Season, 4)
@@ -65,9 +68,9 @@ func TestClassifyRealForAllMankindEpisode(t *testing.T) {
 	assertMetadata(t, m, Metadata{
 		Title:          "For All Mankind",
 		MediaType:      "series",
-		RootFolderName: "For All Mankind",
-		FolderName:     "Season 2",
-		FileName:       "For All Mankind S02E01.mkv",
+		RootFolderName: "For All Mankind (2019)",
+		FolderName:     "Season 02",
+		FileName:       "For All Mankind (2019) - s02e01.mkv",
 	})
 	assertPtr(t, m.Years, 2019)
 	assertPtr(t, m.Season, 2)
@@ -83,8 +86,8 @@ func TestClassifyTedLassoFeaturette(t *testing.T) {
 	assertMetadata(t, m, Metadata{
 		Title:           "Ted Lasso",
 		MediaType:       "series",
-		RootFolderName:  "Ted Lasso",
-		FolderName:      "Season 1",
+		RootFolderName:  "Ted Lasso (2020)",
+		FolderName:      "Season 01",
 		ExtraFolderName: "Featurettes",
 		FileName:        "Extra Time with Coach Lasso - NBC Sports.mkv",
 	})
@@ -135,6 +138,20 @@ func TestClassify1917WithLanguageAndAudioTags(t *testing.T) {
 		FileName:       "1917 (2019).mkv",
 	})
 	assertPtr(t, m.Years, 2019)
+}
+
+func TestClassifyMovieEdition(t *testing.T) {
+	m := Classify("Blade Runner 1982 Directors Cut 1080p", "Blade.Runner.1982.Directors.Cut.mkv", "Blade.Runner.1982.Directors.Cut.mkv")
+	if m.MediaType != "movie" || m.RootFolderName != "Blade Runner (1982) {edition-Director's Cut}" || m.FileName != "Blade Runner (1982) {edition-Director's Cut}.mkv" {
+		t.Fatalf("unexpected: %#v", m)
+	}
+}
+
+func TestClassifySeriesNoMovieEdition(t *testing.T) {
+	m := Classify("Some Show Extended S01E01 1080p", "Some.Show.S01E01.Extended.mkv", "Some.Show.S01E01.Extended.mkv")
+	if m.MediaType != "series" || strings.Contains(m.RootFolderName, "{edition-") || strings.Contains(m.FileName, "{edition-") {
+		t.Fatalf("unexpected: %#v", m)
+	}
 }
 
 func TestParseTorrentNameYearLikeTitle1917(t *testing.T) {

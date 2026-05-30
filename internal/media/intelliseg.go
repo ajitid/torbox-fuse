@@ -48,19 +48,26 @@ func extractMovieMarkers(text string) (bool, *int) {
 	}
 	return qualityOrRelease.MatchString(text), nil
 }
-func buildSeriesFilename(title string, season, episode *int, ext string) string {
+func titleWithYear(title string, year *int) string {
+	if year != nil {
+		return SafePathName(title + " (" + strconv.Itoa(*year) + ")")
+	}
+	return SafePathName(title)
+}
+func buildSeriesFilename(title string, year, season, episode *int, ext string) string {
+	base := titleWithYear(title, year)
 	suffix := "Episode"
 	if season != nil && episode != nil {
-		suffix = "S" + pad(*season, 2) + "E" + pad(*episode, 2)
+		suffix = "s" + pad(*season, 2) + "e" + pad(*episode, 2)
 	} else if season != nil {
-		suffix = "S" + pad(*season, 2)
+		suffix = "s" + pad(*season, 2)
 	} else if episode != nil {
-		suffix = "E" + pad(*episode, 2)
+		suffix = "e" + pad(*episode, 2)
 	}
-	return SafePathName(title+" "+suffix) + ext
+	return SafePathName(base+" - "+suffix) + ext
 }
 func buildRootFolder(title, mt string, year *int) string {
-	if mt == "movie" && year != nil {
+	if (mt == "movie" || mt == "series") && year != nil {
 		return SafePathName(title + " (" + strconv.Itoa(*year) + ")")
 	}
 	return SafePathName(title)
@@ -87,6 +94,40 @@ func detectMovieExtraFolder(path string) string {
 		}
 	}
 	return ""
+}
+
+var movieEditionAliases = []struct{ alias, canonical string }{
+	{"director's cut", "Director's Cut"},
+	{"directors cut", "Director's Cut"},
+	{"theatrical cut", "Theatrical"},
+	{"extended cut", "Extended Cut"},
+	{"special edition", "Special Edition"},
+	{"final cut", "Final Cut"},
+	{"theatrical", "Theatrical"},
+	{"extended", "Extended"},
+	{"unrated", "Unrated"},
+	{"uncut", "Uncut"},
+	{"3d", "3D"},
+}
+
+func detectMovieEdition(text string) string {
+	norm := strings.ToLower(strings.NewReplacer(".", " ", "_", " ", "-", " ").Replace(text))
+	norm = spaces.ReplaceAllString(norm, " ")
+	for _, edition := range movieEditionAliases {
+		re := regexp.MustCompile(`\b` + regexp.QuoteMeta(edition.alias) + `\b`)
+		if re.MatchString(norm) {
+			return edition.canonical
+		}
+	}
+	return ""
+}
+
+func movieBaseWithEdition(title string, year *int, edition string) string {
+	base := buildRootFolder(title, "movie", year)
+	if edition != "" {
+		base = SafePathName(base + " {edition-" + edition + "}")
+	}
+	return base
 }
 
 func Classify(downloadItemName, fileShortName, filePath string) Metadata {
@@ -120,13 +161,14 @@ func Classify(downloadItemName, fileShortName, filePath string) Metadata {
 	if extra != "" && itemTitle != "" {
 		if isSeries {
 			fn := cleanExtraFilename(fileShortName)
-			folder := "Season 1"
+			folder := "Season 01"
 			if season != nil {
-				folder = "Season " + strconv.Itoa(*season)
+				folder = "Season " + pad(*season, 2)
 			}
 			return Metadata{Title: itemTitle, MediaType: "series", Years: year, Season: season, RootFolderName: buildRootFolder(itemTitle, "series", year), FolderName: folder, ExtraFolderName: extra, FileName: fn}
 		}
-		return Metadata{Title: itemTitle, MediaType: "movie", Years: year, RootFolderName: buildRootFolder(itemTitle, "movie", year), FolderName: extra, FileName: SafePathName(fileShortName)}
+		base := movieBaseWithEdition(itemTitle, year, detectMovieEdition(combined))
+		return Metadata{Title: itemTitle, MediaType: "movie", Years: year, RootFolderName: base, FolderName: extra, FileName: SafePathName(fileShortName)}
 	}
 	mt := "unknown"
 	folder := ""
@@ -137,19 +179,18 @@ func Classify(downloadItemName, fileShortName, filePath string) Metadata {
 		if season != nil {
 			s = *season
 		}
-		folder = "Season " + strconv.Itoa(s)
-		fn = buildSeriesFilename(title, season, episode, ext)
+		folder = "Season " + pad(s, 2)
+		fn = buildSeriesFilename(title, year, season, episode, ext)
 	} else if movieLike {
 		mt = "movie"
-		if year != nil {
-			fn = SafePathName(title+" ("+strconv.Itoa(*year)+")") + ext
-		} else {
-			fn = SafePathName(title) + ext
-		}
+		base := movieBaseWithEdition(title, year, detectMovieEdition(combined))
+		fn = base + ext
 	}
 	rootTitle := title
 	if mt == "unknown" {
 		rootTitle = SafePathName(firstNonEmpty(downloadItemName, title))
+	} else if mt == "movie" {
+		rootTitle = strings.TrimSuffix(fn, ext)
 	} else {
 		rootTitle = buildRootFolder(title, mt, year)
 	}

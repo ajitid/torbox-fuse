@@ -54,9 +54,12 @@ func ProcessItems(c *torbox.Client, typ torbox.DownloadType, items []torbox.Item
 		close(out)
 	}()
 	var records []FileRecord
-	byItem := map[string][]FileRecord{}
 	for r := range out {
 		records = append(records, r)
+	}
+	ApplyPlexVersionNaming(records)
+	byItem := map[string][]FileRecord{}
+	for _, r := range records {
 		byItem[r.ItemID] = append(byItem[r.ItemID], r)
 	}
 	for _, p := range subs {
