@@ -27,6 +27,8 @@ type Config struct {
 	ReadAhead       int64
 	PlexAccessToken string
 	PlexBaseURL     string
+	JellyfinAPIKey  string
+	JellyfinBaseURL string
 	Sources         []torbox.DownloadType
 }
 
@@ -38,6 +40,7 @@ func Load() (Config, error) {
 	mountPath := envDefault("MOUNT_PATH", "./torbox")
 	dataPath := envDefault("DATA_PATH", "./torbox-fuse.db")
 	plexAccessToken := strings.TrimSpace(os.Getenv("PLEX_ACCESS_TOKEN"))
+	jellyfinAPIKey := strings.TrimSpace(os.Getenv("JELLYFIN_API_KEY"))
 	refresh, err := parseRefreshTime(envDefault("MOUNT_REFRESH_TIME", "3h"))
 	if err != nil {
 		return Config{}, err
@@ -62,6 +65,8 @@ func Load() (Config, error) {
 		ReadAhead:       DefaultReadAhead,
 		PlexAccessToken: plexAccessToken,
 		PlexBaseURL:     envDefault("PLEX_BASE_URL", "http://127.0.0.1:32400"),
+		JellyfinAPIKey:  jellyfinAPIKey,
+		JellyfinBaseURL: envDefault("JELLYFIN_BASE_URL", "http://127.0.0.1:8096"),
 		Sources:         sources,
 	}, nil
 }

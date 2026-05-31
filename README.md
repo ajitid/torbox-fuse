@@ -43,4 +43,7 @@ See `.env.example`.
 - `PLEX_ACCESS_TOKEN` is optional. When set, torbox-fuse requests Plex partial scans for `${MOUNT_PATH}/movies` and `${MOUNT_PATH}/series` after TorBox refreshes.
 - `PLEX_BASE_URL` defaults to `http://127.0.0.1:32400`.
 - Plex refresh failures are ignored by design.
+- `JELLYFIN_API_KEY` is optional. When set, torbox-fuse notifies Jellyfin that `${MOUNT_PATH}/movies` and `${MOUNT_PATH}/series` changed after TorBox refreshes via `POST /Library/Media/Updated`.
+- `JELLYFIN_BASE_URL` defaults to `http://127.0.0.1:8096`.
+- Jellyfin notification failures are logged but do not fail TorBox refreshes.
 - The web UI listens on all interfaces at `http://0.0.0.0:3939`.

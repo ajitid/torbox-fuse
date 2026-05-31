@@ -16,6 +16,7 @@ import (
 	"github.com/TorBox-App/torbox-fuse/internal/cache"
 	"github.com/TorBox-App/torbox-fuse/internal/config"
 	"github.com/TorBox-App/torbox-fuse/internal/fusefs"
+	"github.com/TorBox-App/torbox-fuse/internal/jellyfin"
 	"github.com/TorBox-App/torbox-fuse/internal/media"
 	"github.com/TorBox-App/torbox-fuse/internal/plex"
 	"github.com/TorBox-App/torbox-fuse/internal/refresh"
@@ -58,6 +59,7 @@ func run() error {
 	}
 	client := torbox.New(cfg.APIKey, cfg.Version)
 	plexClient := plex.New(cfg.PlexBaseURL, cfg.PlexAccessToken)
+	jellyfinClient := jellyfin.New(cfg.JellyfinBaseURL, cfg.JellyfinAPIKey, logger)
 	mgr := refresh.New(client, st, logger, cfg.Sources)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -73,6 +75,7 @@ func run() error {
 	}
 	logger.Printf("mounted on %s with %d files", cfg.MountPath, len(records))
 	plexClient.RefreshMountPaths(ctx, cfg.MountPath)
+	jellyfinClient.NotifyMountPaths(ctx, cfg.MountPath)
 	refreshOnce := func(ctx context.Context, reason string) (int, error) {
 		logger.Printf("%s refresh starting", reason)
 		recs, err := mgr.Run(ctx)
@@ -82,6 +85,7 @@ func run() error {
 		}
 		root.Swap(recs)
 		plexClient.RefreshMountPaths(ctx, cfg.MountPath)
+		jellyfinClient.NotifyMountPaths(ctx, cfg.MountPath)
 		logger.Printf("%s refresh applied: %d files", reason, len(recs))
 		return len(recs), nil
 	}
