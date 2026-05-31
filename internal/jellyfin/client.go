@@ -1,7 +1,6 @@
 package jellyfin
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,13 +21,10 @@ type Client struct {
 	http    *http.Client
 }
 
-type mediaUpdatedRequest struct {
-	Updates []mediaUpdate `json:"Updates"`
-}
-
-type mediaUpdate struct {
-	Path       string `json:"Path"`
-	UpdateType string `json:"UpdateType"`
+type virtualFolder struct {
+	Name      string   `json:"Name"`
+	Locations []string `json:"Locations"`
+	ItemID    string   `json:"ItemId"`
 }
 
 func New(baseURL, apiKey string, logger *log.Logger) *Client {
@@ -51,30 +47,82 @@ func (c *Client) NotifyMountPaths(ctx context.Context, mountPath string) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	reqBody := mediaUpdatedRequest{Updates: []mediaUpdate{
-		{Path: filepath.Join(mountPath, "movies"), UpdateType: "Modified"},
-		{Path: filepath.Join(mountPath, "series"), UpdateType: "Modified"},
-	}}
-	if err := c.postMediaUpdated(ctx, reqBody); err != nil {
-		c.printf("jellyfin media update notify failed: %v", err)
+	folders, err := c.virtualFolders(ctx)
+	if err != nil {
+		c.printf("jellyfin library refresh failed: %v", err)
+		return
+	}
+
+	desiredPaths := []string{
+		filepath.Join(mountPath, "movies"),
+		filepath.Join(mountPath, "series"),
+	}
+	seen := make(map[string]struct{})
+	matched := 0
+	for _, refreshPath := range desiredPaths {
+		for _, folder := range folders {
+			if strings.TrimSpace(folder.ItemID) == "" || !hasLocation(folder, refreshPath) {
+				continue
+			}
+			if _, exists := seen[folder.ItemID]; exists {
+				continue
+			}
+			seen[folder.ItemID] = struct{}{}
+			matched++
+			if err := c.refreshItem(ctx, folder.ItemID); err != nil {
+				c.printf("jellyfin library refresh failed for %q (%s): %v", folder.Name, folder.ItemID, err)
+			}
+		}
+	}
+	if matched == 0 {
+		c.printf("jellyfin library refresh found no matching virtual folders for %s", strings.Join(desiredPaths, ", "))
 	}
 }
 
-func (c *Client) postMediaUpdated(ctx context.Context, body mediaUpdatedRequest) error {
-	u, ok := c.apiURL("/Library/Media/Updated")
+func (c *Client) virtualFolders(ctx context.Context) ([]virtualFolder, error) {
+	u, ok := c.apiURL("/Library/VirtualFolders", nil)
+	if !ok {
+		return nil, fmt.Errorf("invalid base url %q", c.baseURL)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setAuthHeaders(req)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, responseError("GET /Library/VirtualFolders", resp)
+	}
+	var folders []virtualFolder
+	if err := json.NewDecoder(resp.Body).Decode(&folders); err != nil {
+		return nil, err
+	}
+	return folders, nil
+}
+
+func (c *Client) refreshItem(ctx context.Context, itemID string) error {
+	query := url.Values{
+		"Recursive":           []string{"true"},
+		"ImageRefreshMode":    []string{"Default"},
+		"MetadataRefreshMode": []string{"Default"},
+		"ReplaceAllImages":    []string{"false"},
+		"RegenerateTrickplay": []string{"false"},
+		"ReplaceAllMetadata":  []string{"false"},
+	}
+	u, ok := c.apiURL(path.Join("/Items", itemID, "Refresh"), query)
 	if !ok {
 		return fmt.Errorf("invalid base url %q", c.baseURL)
 	}
-	data, err := json.Marshal(body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, nil)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Emby-Token", c.apiKey)
+	c.setAuthHeaders(req)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
@@ -82,26 +130,47 @@ func (c *Client) postMediaUpdated(ctx context.Context, body mediaUpdatedRequest)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		if len(snippet) > 0 {
-			return fmt.Errorf("POST /Library/Media/Updated returned %s: %s", resp.Status, strings.TrimSpace(string(snippet)))
-		}
-		return fmt.Errorf("POST /Library/Media/Updated returned %s", resp.Status)
+		return responseError("POST /Items/{itemId}/Refresh", resp)
 	}
 	return nil
 }
 
-func (c *Client) apiURL(apiPath string) (string, bool) {
+func (c *Client) apiURL(apiPath string, query url.Values) (string, bool) {
 	u, err := url.Parse(c.baseURL)
 	if err != nil {
 		return "", false
 	}
 	u.Path = path.Join(u.Path, apiPath)
+	if query != nil {
+		u.RawQuery = query.Encode()
+	}
 	return u.String(), true
+}
+
+func (c *Client) setAuthHeaders(req *http.Request) {
+	req.Header.Set("X-Emby-Token", c.apiKey)
 }
 
 func (c *Client) printf(format string, args ...any) {
 	if c.log != nil {
 		c.log.Printf(format, args...)
 	}
+}
+
+func hasLocation(folder virtualFolder, scanPath string) bool {
+	cleanScanPath := filepath.Clean(scanPath)
+	for _, location := range folder.Locations {
+		if filepath.Clean(location) == cleanScanPath {
+			return true
+		}
+	}
+	return false
+}
+
+func responseError(operation string, resp *http.Response) error {
+	snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+	if len(snippet) > 0 {
+		return fmt.Errorf("%s returned %s: %s", operation, resp.Status, strings.TrimSpace(string(snippet)))
+	}
+	return fmt.Errorf("%s returned %s", operation, resp.Status)
 }
