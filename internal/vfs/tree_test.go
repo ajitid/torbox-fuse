@@ -29,3 +29,18 @@ func TestBuildTreeWithPlexRenamedDuplicates(t *testing.T) {
 		t.Fatalf("missing renamed duplicate movie paths")
 	}
 }
+
+func TestBuildTreeAfterCanonicalRootCasingMergesCaseOnlySeriesRoots(t *testing.T) {
+	recs := []media.FileRecord{
+		{Key: "k1", MetadataMediaType: "series", MetadataRootFolderName: "Mad Men", MetadataFolderName: "Season 01", MetadataFileName: "Mad Men - s01e01.mkv"},
+		{Key: "k2", MetadataMediaType: "series", MetadataRootFolderName: "mad men", MetadataFolderName: "Season 05", MetadataFileName: "mad men - s05e01.mkv"},
+	}
+	media.ApplyCanonicalRootCasing(recs)
+	tr := Build(recs)
+	if tr.IsDir("/series/mad men") {
+		t.Fatalf("unexpected lower-case split root")
+	}
+	if !tr.IsDir("/series/Mad Men/Season 01") || !tr.IsDir("/series/Mad Men/Season 05") {
+		t.Fatalf("missing merged Mad Men seasons")
+	}
+}

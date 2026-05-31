@@ -57,6 +57,7 @@ func ProcessItems(c *torbox.Client, typ torbox.DownloadType, items []torbox.Item
 	for r := range out {
 		records = append(records, r)
 	}
+	ApplyCanonicalRootCasing(records)
 	ApplyPlexVersionNaming(records)
 	byItem := map[string][]FileRecord{}
 	for _, r := range records {
