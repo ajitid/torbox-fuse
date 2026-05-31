@@ -1,10 +1,13 @@
 package plex
 
 import (
+	"bytes"
 	"context"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -17,7 +20,7 @@ func TestRefreshMountPathsTokenEmptyDoesNotRequest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	New(server.URL, "").RefreshMountPaths(context.Background(), "/srv/torbox")
+	New(server.URL, "", nil).RefreshMountPaths(context.Background(), "/srv/torbox")
 
 	if got := atomic.LoadInt32(&requests); got != 0 {
 		t.Fatalf("requests = %d, want 0", got)
@@ -51,7 +54,7 @@ func TestRefreshMountPathsDiscoversSectionsAndRefreshesExactMatches(t *testing.T
 	}))
 	defer server.Close()
 
-	New(server.URL, token).RefreshMountPaths(context.Background(), "/srv/torbox")
+	New(server.URL, token, nil).RefreshMountPaths(context.Background(), "/srv/torbox")
 
 	mu.Lock()
 	defer mu.Unlock()
@@ -64,7 +67,7 @@ func TestRefreshMountPathsDiscoversSectionsAndRefreshesExactMatches(t *testing.T
 	}
 }
 
-func TestRefreshMountPathsMissingMatchingSectionDoesNotRefresh(t *testing.T) {
+func TestRefreshMountPathsMissingMatchingSectionDoesNotRefreshAndLogs(t *testing.T) {
 	var refreshes int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -77,22 +80,37 @@ func TestRefreshMountPathsMissingMatchingSectionDoesNotRefresh(t *testing.T) {
 		}
 	}))
 	defer server.Close()
+	var buf bytes.Buffer
+	logger := log.New(&buf, "", 0)
 
-	New(server.URL, "token").RefreshMountPaths(context.Background(), "/srv/torbox")
+	New(server.URL, "token", logger).RefreshMountPaths(context.Background(), "/srv/torbox")
 
 	if got := atomic.LoadInt32(&refreshes); got != 0 {
 		t.Fatalf("refreshes = %d, want 0", got)
 	}
+	if got := buf.String(); !strings.Contains(got, "no matching sections") {
+		t.Fatalf("log = %q, want no matching sections message", got)
+	}
 }
 
-func TestRefreshMountPathsPlexErrorsAreSilent(t *testing.T) {
+func TestRefreshMountPathsPlexErrorsAreLoggedButNonFatal(t *testing.T) {
 	t.Run("sections 500", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "nope", http.StatusInternalServerError)
 		}))
 		defer server.Close()
+		var buf bytes.Buffer
+		logger := log.New(&buf, "", 0)
 
-		New(server.URL, "token").RefreshMountPaths(context.Background(), "/srv/torbox")
+		New(server.URL, "token", logger).RefreshMountPaths(context.Background(), "/srv/torbox")
+
+		got := buf.String()
+		if !strings.Contains(got, "plex library refresh failed") {
+			t.Fatalf("log = %q, want failure message", got)
+		}
+		if !strings.Contains(got, "500") && !strings.Contains(got, "Internal Server Error") {
+			t.Fatalf("log = %q, want status", got)
+		}
 	})
 
 	t.Run("refresh 500", func(t *testing.T) {
@@ -107,7 +125,29 @@ func TestRefreshMountPathsPlexErrorsAreSilent(t *testing.T) {
 			}
 		}))
 		defer server.Close()
+		var buf bytes.Buffer
+		logger := log.New(&buf, "", 0)
 
-		New(server.URL, "token").RefreshMountPaths(context.Background(), "/srv/torbox")
+		New(server.URL, "token", logger).RefreshMountPaths(context.Background(), "/srv/torbox")
+
+		got := buf.String()
+		if !strings.Contains(got, "plex library refresh failed") {
+			t.Fatalf("log = %q, want failure message", got)
+		}
+		if !strings.Contains(got, "500") && !strings.Contains(got, "Internal Server Error") {
+			t.Fatalf("log = %q, want status", got)
+		}
 	})
+}
+
+func TestRefreshMountPathsInvalidBaseURLLogsError(t *testing.T) {
+	var buf bytes.Buffer
+	logger := log.New(&buf, "", 0)
+
+	New("://bad", "token", logger).RefreshMountPaths(context.Background(), "/srv/torbox")
+
+	got := buf.String()
+	if !strings.Contains(got, "invalid base url") {
+		t.Fatalf("log = %q, want invalid base url message", got)
+	}
 }

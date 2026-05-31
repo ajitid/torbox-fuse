@@ -3,6 +3,9 @@ package plex
 import (
 	"context"
 	"encoding/xml"
+	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -14,6 +17,7 @@ import (
 type Client struct {
 	baseURL string
 	token   string
+	log     *log.Logger
 	http    *http.Client
 }
 
@@ -31,10 +35,11 @@ type location struct {
 	Path string `xml:"path,attr"`
 }
 
-func New(baseURL, token string) *Client {
+func New(baseURL, token string, logger *log.Logger) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(strings.TrimSpace(baseURL), "/"),
 		token:   strings.TrimSpace(token),
+		log:     logger,
 		http:    http.DefaultClient,
 	}
 }
@@ -50,8 +55,9 @@ func (c *Client) RefreshMountPaths(ctx context.Context, mountPath string) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	sections, ok := c.sections(ctx)
-	if !ok {
+	sections, err := c.sections(ctx)
+	if err != nil {
+		c.printf("plex library refresh failed: %v", err)
 		return
 	}
 
@@ -60,6 +66,7 @@ func (c *Client) RefreshMountPaths(ctx context.Context, mountPath string) {
 		filepath.Join(mountPath, "series"),
 	}
 	seen := make(map[string]struct{})
+	matched := 0
 	for _, scanPath := range desiredPaths {
 		sectionKey, ok := matchingSectionKey(sections, scanPath)
 		if !ok {
@@ -70,48 +77,58 @@ func (c *Client) RefreshMountPaths(ctx context.Context, mountPath string) {
 			continue
 		}
 		seen[pairKey] = struct{}{}
-		c.refresh(ctx, sectionKey, scanPath)
+		matched++
+		if err := c.refresh(ctx, sectionKey, scanPath); err != nil {
+			c.printf("plex library refresh failed for section %s path %q: %v", sectionKey, scanPath, err)
+		}
+	}
+	if matched == 0 {
+		c.printf("plex library refresh found no matching sections for %s", strings.Join(desiredPaths, ", "))
 	}
 }
 
-func (c *Client) sections(ctx context.Context) ([]section, bool) {
+func (c *Client) sections(ctx context.Context) ([]section, error) {
 	u, ok := c.apiURL("/library/sections", nil)
 	if !ok {
-		return nil, false
+		return nil, fmt.Errorf("invalid base url %q", c.baseURL)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return nil, false
+		return nil, err
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, false
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, false
+		return nil, responseError("GET /library/sections", resp)
 	}
 	var sections sectionsResponse
 	if err := xml.NewDecoder(resp.Body).Decode(&sections); err != nil {
-		return nil, false
+		return nil, err
 	}
-	return sections.Directories, true
+	return sections.Directories, nil
 }
 
-func (c *Client) refresh(ctx context.Context, sectionKey, scanPath string) {
+func (c *Client) refresh(ctx context.Context, sectionKey, scanPath string) error {
 	u, ok := c.apiURL(path.Join("/library/sections", sectionKey, "refresh"), url.Values{"path": []string{scanPath}})
 	if !ok {
-		return
+		return fmt.Errorf("invalid base url %q", c.baseURL)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return
+		return err
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return
+		return err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return responseError("GET /library/sections/{id}/refresh", resp)
+	}
+	return nil
 }
 
 func (c *Client) apiURL(apiPath string, query url.Values) (string, bool) {
@@ -131,6 +148,12 @@ func (c *Client) apiURL(apiPath string, query url.Values) (string, bool) {
 	return u.String(), true
 }
 
+func (c *Client) printf(format string, args ...any) {
+	if c.log != nil {
+		c.log.Printf(format, args...)
+	}
+}
+
 func matchingSectionKey(sections []section, scanPath string) (string, bool) {
 	cleanScanPath := filepath.Clean(scanPath)
 	for _, section := range sections {
@@ -141,4 +164,12 @@ func matchingSectionKey(sections []section, scanPath string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func responseError(operation string, resp *http.Response) error {
+	snippet, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+	if len(snippet) > 0 {
+		return fmt.Errorf("%s returned %s: %s", operation, resp.Status, strings.TrimSpace(string(snippet)))
+	}
+	return fmt.Errorf("%s returned %s", operation, resp.Status)
 }

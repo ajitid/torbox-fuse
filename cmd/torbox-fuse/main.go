@@ -58,7 +58,7 @@ func run() error {
 		return fmt.Errorf("open cache: %w", err)
 	}
 	client := torbox.New(cfg.APIKey, cfg.Version)
-	plexClient := plex.New(cfg.PlexBaseURL, cfg.PlexAccessToken)
+	plexClient := plex.New(cfg.PlexBaseURL, cfg.PlexAccessToken, logger)
 	jellyfinClient := jellyfin.New(cfg.JellyfinBaseURL, cfg.JellyfinAPIKey, logger)
 	mgr := refresh.New(client, st, logger, cfg.Sources)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
