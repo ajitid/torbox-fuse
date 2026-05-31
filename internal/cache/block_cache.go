@@ -15,7 +15,7 @@ import (
 	"github.com/TorBox-App/torbox-fuse/internal/media"
 )
 
-const DefaultBlockSize int64 = 4 * 1024 * 1024
+const DefaultBlockSize int64 = 6 * 1024 * 1024
 
 // FetchFunc fetches exactly size bytes at off when available. It returns the HTTP
 // status observed by the caller so auth/expiry failures can invalidate resolved URLs.
