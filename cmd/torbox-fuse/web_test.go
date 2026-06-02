@@ -50,6 +50,9 @@ func TestWebTorrentsGroupsAcceptedTorrentFiles(t *testing.T) {
 	if !strings.Contains(body, "Dune Pack") || strings.Contains(body, "Usenet Movie") {
 		t.Fatalf("unexpected torrents body: %s", body)
 	}
+	if !strings.Contains(body, "Copy magnet") || !strings.Contains(body, "magnet:?xt=urn:btih:dune") {
+		t.Fatalf("body did not contain copy magnet button: %s", body)
+	}
 }
 
 func TestWebTorrentsFiltersBySearchQuery(t *testing.T) {
@@ -168,7 +171,7 @@ func TestGroupTorrentSummariesSortsNewestFirst(t *testing.T) {
 
 func testFiles(context.Context) ([]media.FileRecord, error) {
 	return []media.FileRecord{
-		{Key: "dune", ItemID: "t1", Type: torbox.DownloadTorrent, ItemAddedAt: time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC), FolderName: "Dune Pack", FileSize: 100, MetadataMediaType: "movie", MetadataRootFolderName: "Dune (2021)", MetadataFileName: "Dune (2021).mkv", OriginalPath: "Dune/Dune.mkv"},
+		{Key: "dune", ItemID: "t1", Type: torbox.DownloadTorrent, ItemAddedAt: time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC), FolderName: "Dune Pack", FolderHash: "dune", FileSize: 100, MetadataMediaType: "movie", MetadataRootFolderName: "Dune (2021)", MetadataFileName: "Dune (2021).mkv", OriginalPath: "Dune/Dune.mkv"},
 		{Key: "bb", ItemID: "t2", Type: torbox.DownloadTorrent, ItemAddedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), FolderName: "Breaking Bad", FileSize: 200, MetadataMediaType: "series", MetadataRootFolderName: "Breaking Bad", MetadataFolderName: "Season 1", MetadataFileName: "Breaking Bad - S01E01.mkv"},
 		{Key: "usenet", ItemID: "u1", Type: torbox.DownloadUsenet, FolderName: "Usenet Movie", FileSize: 300, MetadataMediaType: "movie", MetadataRootFolderName: "Usenet Movie", MetadataFileName: "Usenet Movie.mkv"},
 	}, nil

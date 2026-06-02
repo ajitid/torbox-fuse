@@ -40,6 +40,38 @@ templ layout(title string, active string, stats fileStats) {
 				</div>
 				{ children... }
 			</main>
+			<script>
+				async function copyText(text) {
+					if (navigator.clipboard && window.isSecureContext) {
+						await navigator.clipboard.writeText(text);
+						return;
+					}
+					const textarea = document.createElement("textarea");
+					textarea.value = text;
+					textarea.style.position = "fixed";
+					textarea.style.opacity = "0";
+					document.body.appendChild(textarea);
+					textarea.focus();
+					textarea.select();
+					try {
+						if (!document.execCommand("copy")) throw new Error("copy failed");
+					} finally {
+						document.body.removeChild(textarea);
+					}
+				}
+				document.addEventListener("click", async (event) => {
+					const button = event.target.closest("button[data-copy]");
+					if (!button) return;
+					const label = button.textContent;
+					try {
+						await copyText(button.dataset.copy);
+						button.textContent = "Copied";
+					} catch (_) {
+						button.textContent = "Copy failed";
+					}
+					setTimeout(() => { button.textContent = label; }, 1200);
+				});
+			</script>
 		</body>
 	</html>
 }
@@ -131,13 +163,15 @@ templ torrentsPage(data torrentsPageData) {
 						<h2><a href={ templ.URL("/torrents/" + torrent.ID) }>{ torrent.Name }</a></h2>
 						<p class="muted">{ fmt.Sprintf("%s · %d files · %s", torrent.ID, torrent.FileCount, formatBytes(torrent.Size)) }</p>
 					</div>
-					<form method="post" action={ templ.URL("/torrents/" + torrent.ID + "/delete") } onsubmit="return confirm('Delete this torrent from TorBox?')">
-						<button class="button danger" type="submit">Delete</button>
-					</form>
+					<div class="actions">
+						if torrentMagnet(torrent) != "" {
+							<button class="button" type="button" data-copy={ torrentMagnet(torrent) }>Copy magnet</button>
+						}
+						<form method="post" action={ templ.URL("/torrents/" + torrent.ID + "/delete") } onsubmit="return confirm('Delete this torrent from TorBox?')">
+							<button class="button danger" type="submit">Delete</button>
+						</form>
+					</div>
 				</div>
-				if torrent.Hash != "" {
-					<p class="muted">Hash: { torrent.Hash }</p>
-				}
 			</div>
 		}
 		if len(data.Torrents) == 0 {
@@ -163,9 +197,14 @@ templ torrentPage(data torrentPageData) {
 					<p class="muted">{ fmt.Sprintf("%s · %d files · %s", data.Torrent.ID, data.Torrent.FileCount, formatBytes(data.Torrent.Size)) }</p>
 				</div>
 				if data.Torrent.ID != "" {
-					<form method="post" action={ templ.URL("/torrents/" + data.Torrent.ID + "/delete") } onsubmit="return confirm('Delete this torrent from TorBox?')">
-						<button class="button danger" type="submit">Delete</button>
-					</form>
+					<div class="actions">
+						if torrentMagnet(data.Torrent) != "" {
+							<button class="button" type="button" data-copy={ torrentMagnet(data.Torrent) }>Copy magnet</button>
+						}
+						<form method="post" action={ templ.URL("/torrents/" + data.Torrent.ID + "/delete") } onsubmit="return confirm('Delete this torrent from TorBox?')">
+							<button class="button danger" type="submit">Delete</button>
+						</form>
+					</div>
 				}
 			</div>
 			<table class="table torrent-files-table">

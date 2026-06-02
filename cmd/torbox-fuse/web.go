@@ -543,6 +543,14 @@ func formatBytes(n int64) string {
 	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
 }
 
+func torrentMagnet(t torrentSummary) string {
+	hash := strings.TrimSpace(t.Hash)
+	if hash == "" {
+		return ""
+	}
+	return "magnet:?xt=urn:btih:" + hash
+}
+
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {
 		if strings.TrimSpace(v) != "" {
