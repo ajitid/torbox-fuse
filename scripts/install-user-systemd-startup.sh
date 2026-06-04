@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Install user-level systemd startup units for:
-  - torbox-fuse: go run ./cmd/torbox-fuse from this repository
+  - torbox-fuse: go run ./cmd/torbox-fuse from this repository, after plexmediaserver is active
   - plextraktsync-watch: plextraktsync watch, after plexmediaserver is active
 
 Usage:
@@ -82,13 +82,13 @@ cat >"$torbox_unit" <<EOF
 [Unit]
 Description=TorBox FUSE
 Documentation=https://github.com/TorBox-App/torbox-fuse
-After=network-online.target
-Wants=network-online.target
+After=default.target
 
 [Service]
 Type=simple
 WorkingDirectory=$repo_dir
 EnvironmentFile=-$repo_dir/.env
+ExecStartPre=$bash_path -lc 'until systemctl is-active --quiet plexmediaserver.service; do echo "Waiting for plexmediaserver.service..."; sleep 5; done'
 ExecStart=$bash_path -lc 'exec go run ./cmd/torbox-fuse'
 Restart=on-failure
 RestartSec=10
