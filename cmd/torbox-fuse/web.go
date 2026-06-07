@@ -185,7 +185,7 @@ func torrentsHandler(list listFunc, add addTorrentFunc) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			http.Redirect(w, r, "/torrents", http.StatusSeeOther)
+			http.Redirect(w, r, torrentsPath(r.URL.Query().Get("q")), http.StatusSeeOther)
 		default:
 			methodNotAllowed(w, http.MethodGet, http.MethodPost)
 		}
@@ -208,7 +208,7 @@ func torrentDetailHandler(list listFunc, deleteTorrent deleteTorrentFunc) http.H
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			http.Redirect(w, r, "/torrents", http.StatusSeeOther)
+			http.Redirect(w, r, torrentsPath(r.URL.Query().Get("q")), http.StatusSeeOther)
 			return
 		}
 		if action != "" {
@@ -541,6 +541,31 @@ func formatBytes(n int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGTPE"[exp])
+}
+
+func torrentsPath(query string) string {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return "/torrents"
+	}
+	v := url.Values{}
+	v.Set("q", query)
+	return "/torrents?" + v.Encode()
+}
+
+func torrentPath(id string) string {
+	return "/torrents/" + url.PathEscape(id)
+}
+
+func torrentDeletePath(id string, query string) string {
+	p := "/torrents/" + url.PathEscape(id) + "/delete"
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return p
+	}
+	v := url.Values{}
+	v.Set("q", query)
+	return p + "?" + v.Encode()
 }
 
 func torrentMagnet(t torrentSummary) string {

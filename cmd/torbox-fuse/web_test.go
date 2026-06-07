@@ -66,6 +66,9 @@ func TestWebTorrentsFiltersBySearchQuery(t *testing.T) {
 	if !strings.Contains(body, "Breaking Bad") || strings.Contains(body, "Dune Pack") {
 		t.Fatalf("unexpected filtered body: %s", body)
 	}
+	if !strings.Contains(body, `action="/torrents?q=breaking"`) || !strings.Contains(body, `action="/torrents/t2/delete?q=breaking"`) {
+		t.Fatalf("filtered page did not preserve query in form actions: %s", body)
+	}
 }
 
 func TestFilterTorrentSummariesMatchesFilePath(t *testing.T) {
@@ -122,11 +125,11 @@ func TestWebAddTorrentRedirects(t *testing.T) {
 		return nil
 	}, noDelete)
 	form := url.Values{"magnet": {"magnet:?xt=urn:btih:abc"}}
-	req := httptest.NewRequest(http.MethodPost, "/torrents", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/torrents?q=peacemak", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	res := httptest.NewRecorder()
 	h.ServeHTTP(res, req)
-	if res.Code != http.StatusSeeOther || res.Header().Get("Location") != "/torrents" || gotMagnet != "magnet:?xt=urn:btih:abc" {
+	if res.Code != http.StatusSeeOther || res.Header().Get("Location") != "/torrents?q=peacemak" || gotMagnet != "magnet:?xt=urn:btih:abc" {
 		t.Fatalf("status=%d location=%q magnet=%q", res.Code, res.Header().Get("Location"), gotMagnet)
 	}
 }
@@ -135,8 +138,8 @@ func TestWebDeleteTorrentRedirects(t *testing.T) {
 	var gotID string
 	h := newWebHandler(noRefresh, testFiles, noAdd, func(_ context.Context, id string) error { gotID = id; return nil })
 	res := httptest.NewRecorder()
-	h.ServeHTTP(res, httptest.NewRequest(http.MethodPost, "/torrents/t1/delete", nil))
-	if res.Code != http.StatusSeeOther || res.Header().Get("Location") != "/torrents" || gotID != "t1" {
+	h.ServeHTTP(res, httptest.NewRequest(http.MethodPost, "/torrents/t1/delete?q=peacemak", nil))
+	if res.Code != http.StatusSeeOther || res.Header().Get("Location") != "/torrents?q=peacemak" || gotID != "t1" {
 		t.Fatalf("status=%d location=%q id=%q", res.Code, res.Header().Get("Location"), gotID)
 	}
 }

@@ -143,7 +143,7 @@ templ torrentsPage(data torrentsPageData) {
 		<div class="torrent-controls">
 			<div class="card form-card">
 				<h2>Add torrent</h2>
-				<form method="post" action="/torrents" class="torrent-form add-torrent-form">
+				<form method="post" action={ templ.URL(torrentsPath(data.Query)) } class="torrent-form add-torrent-form">
 					<label><span>Magnet link</span><input type="text" name="magnet" required placeholder="magnet:?xt=urn:btih:..."/></label>
 					<button class="button primary" type="submit">Add</button>
 				</form>
@@ -160,14 +160,14 @@ templ torrentsPage(data torrentsPageData) {
 			<div class="card">
 				<div class="header">
 					<div>
-						<h2><a href={ templ.URL("/torrents/" + torrent.ID) }>{ torrent.Name }</a></h2>
+						<h2><a href={ templ.URL(torrentPath(torrent.ID)) }>{ torrent.Name }</a></h2>
 						<p class="muted">{ fmt.Sprintf("%s · %d files · %s", torrent.ID, torrent.FileCount, formatBytes(torrent.Size)) }</p>
 					</div>
 					<div class="actions">
 						if torrentMagnet(torrent) != "" {
 							<button class="button" type="button" data-copy={ torrentMagnet(torrent) }>Copy magnet</button>
 						}
-						<form method="post" action={ templ.URL("/torrents/" + torrent.ID + "/delete") } onsubmit="return confirm('Delete this torrent from TorBox?')">
+						<form method="post" action={ templ.URL(torrentDeletePath(torrent.ID, data.Query)) } onsubmit="return confirm('Delete this torrent from TorBox?')">
 							<button class="button danger" type="submit">Delete</button>
 						</form>
 					</div>
@@ -201,7 +201,7 @@ templ torrentPage(data torrentPageData) {
 						if torrentMagnet(data.Torrent) != "" {
 							<button class="button" type="button" data-copy={ torrentMagnet(data.Torrent) }>Copy magnet</button>
 						}
-						<form method="post" action={ templ.URL("/torrents/" + data.Torrent.ID + "/delete") } onsubmit="return confirm('Delete this torrent from TorBox?')">
+						<form method="post" action={ templ.URL(torrentDeletePath(data.Torrent.ID, "")) } onsubmit="return confirm('Delete this torrent from TorBox?')">
 							<button class="button danger" type="submit">Delete</button>
 						</form>
 					</div>
