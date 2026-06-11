@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Install user-level systemd startup units for:
-  - torbox-fuse: go run ./cmd/torbox-fuse from this repository, after plexmediaserver is active
+  - torbox-fuse: built binary from ./cmd/torbox-fuse in this repository, after plexmediaserver is active
   - plextraktsync-watch: plextraktsync watch, after plexmediaserver is active
 
 Usage:
@@ -77,6 +77,11 @@ done
 mkdir -p -- "$user_unit_dir"
 
 bash_path="$(command -v bash)"
+plextraktsync_path="$(command -v plextraktsync)"
+torbox_bin="$repo_dir/bin/torbox-fuse"
+
+mkdir -p -- "$(dirname -- "$torbox_bin")"
+go build -o "$torbox_bin" ./cmd/torbox-fuse
 
 cat >"$torbox_unit" <<EOF
 [Unit]
@@ -89,7 +94,7 @@ Type=simple
 WorkingDirectory=$repo_dir
 EnvironmentFile=-$repo_dir/.env
 ExecStartPre=$bash_path -lc 'until systemctl is-active --quiet plexmediaserver.service; do echo "Waiting for plexmediaserver.service..."; sleep 5; done'
-ExecStart=$bash_path -lc 'exec go run ./cmd/torbox-fuse'
+ExecStart=$torbox_bin
 Restart=on-failure
 RestartSec=10
 
@@ -105,7 +110,7 @@ After=default.target
 [Service]
 Type=simple
 ExecStartPre=$bash_path -lc 'until systemctl is-active --quiet plexmediaserver.service; do echo "Waiting for plexmediaserver.service..."; sleep 5; done'
-ExecStart=$bash_path -lc 'exec plextraktsync watch'
+ExecStart=$plextraktsync_path watch
 Restart=on-failure
 RestartSec=10
 
