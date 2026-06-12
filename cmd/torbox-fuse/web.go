@@ -56,7 +56,7 @@ func newWebHandler(refresh refreshFunc, list listFunc, add addTorrentFunc, delet
 			http.NotFound(w, r)
 			return
 		}
-		http.Redirect(w, r, "/mount", http.StatusSeeOther)
+		http.Redirect(w, r, "/torrents", http.StatusSeeOther)
 	})
 	mux.HandleFunc("/mount", mountHandler(list))
 	mux.HandleFunc("/mount/", mountHandler(list))
@@ -71,7 +71,7 @@ func newWebHandler(refresh refreshFunc, list listFunc, add addTorrentFunc, delet
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, redirectTarget(r, "/mount"), http.StatusSeeOther)
+		http.Redirect(w, r, redirectTarget(r, "/torrents"), http.StatusSeeOther)
 	})
 	return mux
 }
