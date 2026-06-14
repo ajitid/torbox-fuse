@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# KDE Wayland workaround for Plex Desktop:
-# Force Plex's Qt launcher to use the X11/xcb backend, which runs through XWayland.
-# This avoids Plex's problematic Wayland path on KDE mixed-DPI setups.
+# KDE Wayland workaround for Plex Qt apps:
+# Force Plex Desktop / Plex HTPC launchers to use the X11/xcb backend, which runs through XWayland.
+# This avoids Plex's problematic native Wayland path on KDE mixed-DPI/fractional-scale setups.
 
-DESKTOP_FILE="/usr/share/applications/tv.plex.PlexDesktop.desktop"
+APPS=(
+  "Plex Desktop|/usr/share/applications/tv.plex.PlexDesktop.desktop"
+  "Plex HTPC|/usr/share/applications/tv.plex.PlexHTPC.desktop"
+)
 
 usage() {
   cat <<EOF
 Usage:
-  $0            Patch Plex desktop launcher to force QT_QPA_PLATFORM=xcb
-  $0 --revert   Restore desktop launcher from backup
+  $0            Patch installed Plex desktop launchers to force QT_QPA_PLATFORM=xcb
+  $0 --revert   Restore installed Plex desktop launchers from backups
 EOF
 }
 
@@ -23,32 +26,19 @@ case "${1:-}" in
   *) echo "ERROR: unknown argument: $1" >&2; usage >&2; exit 1 ;;
 esac
 
-if [[ "$REVERT" == 1 ]]; then
-  if [[ -f "${DESKTOP_FILE}.bak" ]]; then
-    printf '==> Restoring desktop launcher backup: %s -> %s\n' "${DESKTOP_FILE}.bak" "$DESKTOP_FILE"
-    sudo cp "${DESKTOP_FILE}.bak" "$DESKTOP_FILE"
-    echo 'OK: reverted Plex KDE launcher patch. Restart Plex Desktop fully.'
+patch_desktop_file() {
+  local app_name="$1"
+  local desktop_file="$2"
+
+  printf '==> Patching %s launcher to force xcb: %s\n' "$app_name" "$desktop_file"
+  if [[ ! -f "${desktop_file}.bak" ]]; then
+    sudo cp "$desktop_file" "${desktop_file}.bak"
+    printf '==> Backup created: %s\n' "${desktop_file}.bak"
   else
-    echo "ERROR: no desktop launcher backup found: ${DESKTOP_FILE}.bak" >&2
-    exit 1
+    printf '==> Backup already exists: %s\n' "${desktop_file}.bak"
   fi
-  exit 0
-fi
 
-if [[ ! -f "$DESKTOP_FILE" ]]; then
-  echo "ERROR: desktop launcher not found: $DESKTOP_FILE" >&2
-  exit 1
-fi
-
-printf '==> Patching desktop launcher to force xcb: %s\n' "$DESKTOP_FILE"
-if [[ ! -f "${DESKTOP_FILE}.bak" ]]; then
-  sudo cp "$DESKTOP_FILE" "${DESKTOP_FILE}.bak"
-  printf '==> Backup created: %s\n' "${DESKTOP_FILE}.bak"
-else
-  printf '==> Backup already exists: %s\n' "${DESKTOP_FILE}.bak"
-fi
-
-sudo python - <<'PY' "$DESKTOP_FILE"
+  sudo python - <<'PY' "$desktop_file"
 from pathlib import Path
 import sys
 
@@ -66,10 +56,71 @@ else:
 path.write_text("\n".join(lines) + "\n")
 PY
 
-if grep -q '^Exec=env QT_QPA_PLATFORM=xcb Plex' "$DESKTOP_FILE"; then
-  echo 'OK: Plex desktop launcher now forces QT_QPA_PLATFORM=xcb.'
-  echo 'Restart Plex Desktop fully for changes to take effect.'
-else
-  echo 'ERROR: patch verification failed.' >&2
+  if grep -q '^Exec=env QT_QPA_PLATFORM=xcb ' "$desktop_file"; then
+    printf 'OK: %s launcher now forces QT_QPA_PLATFORM=xcb.\n' "$app_name"
+  else
+    printf 'ERROR: patch verification failed for %s.\n' "$app_name" >&2
+    exit 1
+  fi
+}
+
+revert_desktop_file() {
+  local app_name="$1"
+  local desktop_file="$2"
+
+  if [[ -f "${desktop_file}.bak" ]]; then
+    printf '==> Restoring %s launcher backup: %s -> %s\n' "$app_name" "${desktop_file}.bak" "$desktop_file"
+    sudo cp "${desktop_file}.bak" "$desktop_file"
+    printf 'OK: reverted %s KDE launcher patch.\n' "$app_name"
+    return 0
+  fi
+
+  printf 'WARNING: no backup found for %s: %s.bak\n' "$app_name" "$desktop_file" >&2
+  return 1
+}
+
+if [[ "$REVERT" == 1 ]]; then
+  restored=0
+  seen=0
+  for app in "${APPS[@]}"; do
+    IFS='|' read -r app_name desktop_file <<< "$app"
+    if [[ -f "$desktop_file" ]]; then
+      seen=1
+      if revert_desktop_file "$app_name" "$desktop_file"; then
+        restored=1
+      fi
+    else
+      printf '==> Skipping %s; launcher not found: %s\n' "$app_name" "$desktop_file"
+    fi
+  done
+
+  if [[ "$seen" == 0 ]]; then
+    echo 'ERROR: no Plex desktop launchers found.' >&2
+    exit 1
+  fi
+  if [[ "$restored" == 0 ]]; then
+    echo 'ERROR: no Plex launcher backups restored.' >&2
+    exit 1
+  fi
+
+  echo 'Restart patched Plex apps fully for changes to take effect.'
+  exit 0
+fi
+
+patched=0
+for app in "${APPS[@]}"; do
+  IFS='|' read -r app_name desktop_file <<< "$app"
+  if [[ -f "$desktop_file" ]]; then
+    patch_desktop_file "$app_name" "$desktop_file"
+    patched=1
+  else
+    printf '==> Skipping %s; launcher not found: %s\n' "$app_name" "$desktop_file"
+  fi
+done
+
+if [[ "$patched" == 0 ]]; then
+  echo 'ERROR: no Plex desktop launchers found.' >&2
   exit 1
 fi
+
+echo 'Restart patched Plex apps fully for changes to take effect.'
