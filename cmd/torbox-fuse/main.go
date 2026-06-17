@@ -44,7 +44,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v sources=%v web=http://0.0.0.0:3939", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther, cfg.Sources)
+	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v sources=%v web=http://0.0.0.0:%d", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther, cfg.Sources, cfg.WebAppPort)
 	if err := ensureEmptyMountPath(cfg.MountPath); err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func run() error {
 		_, err := refreshOnce(ctx, "delete torrent")
 		return err
 	}
-	if _, err := startWebServer(ctx, logger, refreshOnce, listFiles, addTorrent, deleteTorrent); err != nil {
+	if _, err := startWebServer(ctx, logger, cfg.WebAppPort, refreshOnce, listFiles, addTorrent, deleteTorrent); err != nil {
 		return fmt.Errorf("start web server: %w", err)
 	}
 	go func() {

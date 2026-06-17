@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +30,7 @@ type Config struct {
 	PlexBaseURL     string
 	JellyfinAPIKey  string
 	JellyfinBaseURL string
+	WebAppPort      int
 	Sources         []torbox.DownloadType
 }
 
@@ -53,6 +55,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	webAppPort, err := parsePort(envDefault("WEBAPP_PORT", "4747"))
+	if err != nil {
+		return Config{}, err
+	}
 	return Config{
 		APIKey:          apiKey,
 		MountPath:       mountPath,
@@ -67,6 +73,7 @@ func Load() (Config, error) {
 		PlexBaseURL:     envDefault("PLEX_BASE_URL", "http://127.0.0.1:32400"),
 		JellyfinAPIKey:  jellyfinAPIKey,
 		JellyfinBaseURL: envDefault("JELLYFIN_BASE_URL", "http://127.0.0.1:8096"),
+		WebAppPort:      webAppPort,
 		Sources:         sources,
 	}, nil
 }
@@ -130,6 +137,14 @@ func parseBoolEnv(v string) bool {
 	default:
 		return false
 	}
+}
+
+func parsePort(v string) (int, error) {
+	port, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || port < 1 || port > 65535 {
+		return 0, fmt.Errorf("invalid WEBAPP_PORT %q (must be an integer from 1 to 65535)", v)
+	}
+	return port, nil
 }
 
 func MaskAPIKey(s string) string {

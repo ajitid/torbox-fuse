@@ -13,7 +13,7 @@ The mount directory must exist or be creatable and must be empty.
 Open the web UI at:
 
 ```text
-http://0.0.0.0:3939
+http://0.0.0.0:4747
 ```
 
 The UI provides:
@@ -46,4 +46,5 @@ See `.env.example`.
 - `JELLYFIN_API_KEY` is optional. When set, torbox-fuse asks Jellyfin to refresh virtual folders whose locations match `${MOUNT_PATH}/movies` or `${MOUNT_PATH}/series` after TorBox refreshes.
 - `JELLYFIN_BASE_URL` defaults to `http://127.0.0.1:8096`.
 - Jellyfin refresh failures and missing matching virtual folders are logged but do not fail TorBox refreshes.
-- The web UI listens on all interfaces at `http://0.0.0.0:3939`.
+- `WEBAPP_PORT` defaults to `4747`.
+- The web UI listens on all interfaces at `http://0.0.0.0:${WEBAPP_PORT}`.
