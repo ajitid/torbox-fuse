@@ -10,6 +10,30 @@ TORBOX_API_KEY=... MOUNT_PATH=/tmp/torbox-test DATA_PATH=/tmp/torbox-test.db go 
 
 The mount directory must exist or be creatable and must be empty.
 
+## macOS
+
+Install and approve [macFUSE](https://macfuse.github.io/) first. On Apple silicon, the macFUSE kernel backend requires enabling third-party kernel extensions in Startup Security Utility.
+
+For Plex Media Server, run the mount and Plex as the same login user. For example:
+
+```bash
+mkdir -p "$HOME/Movies/torbox"
+```
+
+Set `MOUNT_PATH` to that empty directory and leave `FUSE_ALLOW_OTHER=false` in `.env`.
+
+To build and run torbox-fuse automatically at login as a user LaunchAgent:
+
+```bash
+scripts/install-macos-launch-agent.sh
+```
+
+The installer builds `bin/torbox-fuse`, reads credentials from the repository `.env` through its working directory, and writes logs to `~/Library/Logs/torbox-fuse{,.error}.log`. It does not use `sudo`. Remove it with:
+
+```bash
+scripts/install-macos-launch-agent.sh --uninstall
+```
+
 Open the web UI at:
 
 ```text
