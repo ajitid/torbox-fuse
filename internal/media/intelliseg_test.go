@@ -80,6 +80,23 @@ func TestClassifyRealForAllMankindEpisode(t *testing.T) {
 	assertPtr(t, m.Episode, 1)
 }
 
+func TestClassifySeriesUsesFirstYearOfYearRange(t *testing.T) {
+	m := Classify(
+		"Lost (2004-2010) Season 1",
+		"Lost.S01E01.2004-2010.1080p.BluRay.mkv",
+		"Lost (2004-2010) Season 1/Lost.S01E01.2004-2010.1080p.BluRay.mkv",
+		0,
+	)
+	assertMetadata(t, m, Metadata{
+		Title:          "Lost",
+		MediaType:      "series",
+		RootFolderName: "Lost (2004)",
+		FolderName:     "Season 01",
+		FileName:       "Lost (2004) - s01e01.mkv",
+	})
+	assertPtr(t, m.Years, 2004)
+}
+
 func TestClassifyTedLassoFeaturette(t *testing.T) {
 	m := Classify(
 		"Ted Lasso (2020) S01 (1080p BluRay x265 10bit EAC3 5.1 Ghost)",

@@ -35,6 +35,7 @@ var (
 		regexp.MustCompile(`(?i)\b(8bit|10bit|12bit|10[ .-]?bit)\b`),
 		regexp.MustCompile(`(?i)\b(multisub|msubs?|subbed|proper|repack|internal|limited|extended)\b`),
 	}
+	yearRangeRE       = regexp.MustCompile(`\b(19\d{2}|20\d{2})\s*[-–]\s*(19\d{2}|20\d{2})\b`)
 	trailingBracketRE = regexp.MustCompile(`(?i)[\[(][^\])]{0,40}[\])]\s*$`)
 	trailingGroupRE   = regexp.MustCompile(`(?i)\s+-\s*[A-Z0-9]{2,20}\s*$`)
 )
@@ -48,7 +49,7 @@ func parseTorrentName(raw string) torrentNameParts {
 	normalized := strings.NewReplacer(".", " ", "_", " ").Replace(stem)
 	season, episode := parseSeasonEpisode(normalized)
 	years := yearMatches(normalized)
-	year := lastYear(normalized)
+	year := releaseYear(normalized)
 
 	spans := markSpans(normalized, append([]*regexp.Regexp{yearRE, seasonOnlyRE, episodeOnlyRE}, releaseNoiseREs...)...)
 	for _, re := range seasonEpisodeREs {
@@ -143,7 +144,10 @@ func cleanParsedTitle(s string) string {
 	return SafePathName(s)
 }
 
-func lastYear(text string) *int {
+func releaseYear(text string) *int {
+	if m := yearRangeRE.FindStringSubmatch(text); m != nil {
+		return ptr(atoi(m[1]))
+	}
 	matches := yearRE.FindAllStringSubmatch(text, -1)
 	if len(matches) == 0 {
 		return nil
