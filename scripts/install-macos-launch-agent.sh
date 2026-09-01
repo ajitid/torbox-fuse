@@ -6,21 +6,36 @@ usage() {
 Build torbox-fuse and install it as a per-user macOS LaunchAgent.
 
 Usage:
-  scripts/install-macos-launch-agent.sh [--no-start] [--uninstall]
+  scripts/install-macos-launch-agent.sh [--no-start | --start | --stop | --uninstall]
 
 Options:
   --no-start   Install the LaunchAgent without starting it now.
+  --start      Load and start an already-installed LaunchAgent.
+  --stop       Stop and unload the LaunchAgent, but keep its plist installed.
   --uninstall  Stop, unload, and remove the LaunchAgent.
 USAGE
 }
 
 start_now=1
-uninstall=0
+action="install"
+explicit_action=0
+
+set_action() {
+  if [[ "$explicit_action" -eq 1 ]]; then
+    echo "Only one action option may be specified." >&2
+    usage >&2
+    exit 2
+  fi
+  action="$1"
+  explicit_action=1
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --no-start) start_now=0 ;;
-    --uninstall) uninstall=1 ;;
+    --start) set_action "start" ;;
+    --stop) set_action "stop" ;;
+    --uninstall) set_action "uninstall" ;;
     -h|--help) usage; exit 0 ;;
     *)
       echo "Unknown argument: $1" >&2
@@ -52,12 +67,38 @@ stderr_log="$log_dir/torbox-fuse.error.log"
 torbox_bin="$repo_dir/bin/torbox-fuse"
 service_target="gui/$uid/$label"
 
-if [[ "$uninstall" -eq 1 ]]; then
-  launchctl bootout "$service_target" 2>/dev/null || true
-  rm -f -- "$agent_file"
-  echo "Removed LaunchAgent: $agent_file"
-  exit 0
+if [[ "$action" != "install" && "$start_now" -eq 0 ]]; then
+  echo "--no-start can only be used when installing." >&2
+  usage >&2
+  exit 2
 fi
+
+case "$action" in
+  uninstall)
+    launchctl bootout "$service_target" 2>/dev/null || true
+    rm -f -- "$agent_file"
+    echo "Removed LaunchAgent: $agent_file"
+    exit 0
+    ;;
+  stop)
+    launchctl bootout "$service_target"
+    echo "Stopped LaunchAgent: $service_target"
+    exit 0
+    ;;
+  start)
+    if [[ ! -f "$agent_file" ]]; then
+      echo "LaunchAgent is not installed: $agent_file" >&2
+      exit 1
+    fi
+    if launchctl print "$service_target" >/dev/null 2>&1; then
+      launchctl kickstart -k "$service_target"
+    else
+      launchctl bootstrap "gui/$uid" "$agent_file"
+    fi
+    echo "Started LaunchAgent: $service_target"
+    exit 0
+    ;;
+esac
 
 for cmd in go launchctl plutil; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
