@@ -160,13 +160,21 @@ func ensureEmptyMountPath(p string) error {
 }
 
 func lazyUnmount(p string) error {
-	if runtime.GOOS != "linux" {
-		return fmt.Errorf("lazy FUSE unmount is only implemented on Linux")
+	var cmd *exec.Cmd
+	var name string
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("diskutil", "unmount", "force", p)
+		name = "diskutil unmount force"
+	case "linux":
+		cmd = exec.Command("fusermount3", "-uz", p)
+		name = "fusermount3 -uz"
+	default:
+		return fmt.Errorf("lazy FUSE unmount is not supported on %s", runtime.GOOS)
 	}
-	cmd := exec.Command("fusermount3", "-uz", p)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("fusermount3 -uz: %w: %s", err, string(out))
+		return fmt.Errorf("%s: %w: %s", name, err, string(out))
 	}
 	return nil
 }
