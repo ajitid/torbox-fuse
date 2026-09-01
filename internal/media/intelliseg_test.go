@@ -192,6 +192,62 @@ func TestClassifySmallMovieSample(t *testing.T) {
 	assertNoPtr(t, m.Episode)
 }
 
+func TestClassifySmallMainMenuMovie(t *testing.T) {
+	m := Classify(
+		"Khosla Ka Ghosla! (2006) (1080p BluRay x265 HEVC 10bit AAC 5.1 Hindi Natty)",
+		"Main Menu.mkv",
+		"Khosla Ka Ghosla! (2006) (1080p BluRay x265 HEVC 10bit AAC 5.1 Hindi Natty)/Main Menu.mkv",
+		mainMenuMaxBytes-1,
+	)
+	assertMetadata(t, m, Metadata{
+		Title:          "Khosla Ka Ghosla!",
+		MediaType:      "movie",
+		RootFolderName: "Khosla Ka Ghosla! (2006)",
+		FolderName:     "Other",
+		FileName:       "Main Menu.mkv",
+	})
+	assertPtr(t, m.Years, 2006)
+}
+
+func TestClassifyMainMenuAtSizeLimitNormally(t *testing.T) {
+	m := Classify("Match Point (2005) 1080p", "Main Menu.mkv", "Match Point (2005)/Main Menu.mkv", mainMenuMaxBytes)
+	if m.MediaType != "movie" || m.FolderName == "Other" || m.ExtraFolderName != "" {
+		t.Fatalf("Main Menu at size limit was classified as an extra: %#v", m)
+	}
+}
+
+func TestClassifySmallNonExactMainMenuNormally(t *testing.T) {
+	m := Classify("Match Point (2005) 1080p", "Main Menu Featurette.mkv", "Match Point (2005)/Main Menu Featurette.mkv", mainMenuMaxBytes-1)
+	if m.MediaType != "movie" || m.FolderName == "Other" || m.ExtraFolderName != "" {
+		t.Fatalf("non-exact Main Menu was classified as an extra: %#v", m)
+	}
+}
+
+func TestClassifySmallMainMenuSeparatorCaseVariant(t *testing.T) {
+	m := Classify("Match Point (2005) 1080p", "MAIN_MENU.mp4", "Match Point (2005)/MAIN_MENU.mp4", mainMenuMaxBytes-1)
+	assertMetadata(t, m, Metadata{
+		Title:          "Match Point",
+		MediaType:      "movie",
+		RootFolderName: "Match Point (2005)",
+		FolderName:     "Other",
+		FileName:       "MAIN_MENU.mp4",
+	})
+}
+
+func TestClassifySmallSeriesMainMenuWithSeason(t *testing.T) {
+	m := Classify("Example Show (2020) Season 2", "Main-Menu.mkv", "Example Show (2020)/Season 2/Main-Menu.mkv", mainMenuMaxBytes-1)
+	assertMetadata(t, m, Metadata{
+		Title:           "Example Show",
+		MediaType:       "series",
+		RootFolderName:  "Example Show (2020)",
+		FolderName:      "Season 02",
+		ExtraFolderName: "Other",
+		FileName:        "Main-Menu.mkv",
+	})
+	assertPtr(t, m.Years, 2020)
+	assertPtr(t, m.Season, 2)
+}
+
 func TestClassifySampleAtSizeLimitNormally(t *testing.T) {
 	m := Classify("Match Point (2005) 1080p", "sample.mkv", "Match Point (2005)/sample.mkv", sampleMaxBytes)
 	if m.MediaType != "movie" || m.FolderName == "Other" || m.ExtraFolderName != "" {

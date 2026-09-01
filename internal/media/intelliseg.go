@@ -7,7 +7,10 @@ import (
 	"strings"
 )
 
-const sampleMaxBytes int64 = 50 * 1024 * 1024
+const (
+	sampleMaxBytes   int64 = 50 * 1024 * 1024
+	mainMenuMaxBytes int64 = 75 * 1024 * 1024
+)
 
 var qualityOrRelease = regexp.MustCompile(`(?i)\b(480p|576p|720p|1080p|1440p|2160p|4k|x264|x265|h\.?264|h\.?265|hevc|bluray|brrip|webrip|web[- ]?dl|dvdrip|remux)\b`)
 var yearRE = regexp.MustCompile(`\b(19\d{2}|20\d{2})\b`)
@@ -84,6 +87,12 @@ func cleanExtraFilename(name string) string {
 func isSmallSample(fileShortName string, fileSize int64) bool {
 	stem := strings.TrimSuffix(fileShortName, filepath.Ext(fileShortName))
 	return fileSize < sampleMaxBytes && strings.HasPrefix(strings.ToLower(stem), "sample")
+}
+
+func isSmallMainMenu(fileShortName string, fileSize int64) bool {
+	stem := strings.TrimSuffix(fileShortName, filepath.Ext(fileShortName))
+	normalized := strings.NewReplacer(" ", "", ".", "", "_", "", "-", "").Replace(stem)
+	return fileSize < mainMenuMaxBytes && strings.EqualFold(normalized, "mainmenu")
 }
 
 func detectMovieExtraFolder(path string) string {
@@ -164,7 +173,7 @@ func Classify(downloadItemName, fileShortName, filePath string, fileSize int64) 
 		year = itemParsed.Year
 	}
 
-	if isSmallSample(fileShortName, fileSize) && itemTitle != "" {
+	if (isSmallSample(fileShortName, fileSize) || isSmallMainMenu(fileShortName, fileSize)) && itemTitle != "" {
 		if isSeries {
 			folder := ""
 			if season != nil {
