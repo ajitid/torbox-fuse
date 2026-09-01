@@ -74,7 +74,7 @@ func ProcessItems(c *torbox.Client, typ torbox.DownloadType, items []torbox.Item
 
 func BuildVideoRecord(c *torbox.Client, typ torbox.DownloadType, item torbox.Item, f torbox.RemoteFile) FileRecord {
 	r := baseRecord(c, typ, item, f)
-	md := Classify(item.Name, f.ShortName, f.Name)
+	md := Classify(item.Name, f.ShortName, f.Name, f.Size)
 	applyMetadata(&r, md)
 	return r
 }

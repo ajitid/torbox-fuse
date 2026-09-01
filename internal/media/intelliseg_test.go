@@ -6,21 +6,21 @@ import (
 )
 
 func TestClassifyMovie(t *testing.T) {
-	m := Classify("Inception 2010 1080p", "Inception.2010.1080p.mkv", "Inception.2010.1080p.mkv")
+	m := Classify("Inception 2010 1080p", "Inception.2010.1080p.mkv", "Inception.2010.1080p.mkv", 0)
 	if m.MediaType != "movie" || m.RootFolderName != "Inception (2010)" || m.FileName != "Inception (2010).mkv" {
 		t.Fatalf("unexpected: %#v", m)
 	}
 }
 
 func TestClassifySeries(t *testing.T) {
-	m := Classify("Show", "Show.S01E02.mkv", "Show/Season 1/Show.S01E02.mkv")
+	m := Classify("Show", "Show.S01E02.mkv", "Show/Season 1/Show.S01E02.mkv", 0)
 	if m.MediaType != "series" || m.Season == nil || *m.Season != 1 || m.Episode == nil || *m.Episode != 2 || m.FolderName != "Season 01" || m.FileName != "Show - s01e02.mkv" {
 		t.Fatalf("unexpected: %#v", m)
 	}
 }
 
 func TestClassifyMovieExtra(t *testing.T) {
-	m := Classify("Film 2020", "Trailer.mkv", "Film/Trailers/Trailer.mkv")
+	m := Classify("Film 2020", "Trailer.mkv", "Film/Trailers/Trailer.mkv", 0)
 	if m.MediaType != "movie" || m.FolderName != "Trailers" {
 		t.Fatalf("unexpected: %#v", m)
 	}
@@ -31,6 +31,7 @@ func TestClassifyRealMovieArgo(t *testing.T) {
 		"Argo (2012) 1080p DV HDR Bluray AV1 EAC3",
 		"Argo.2012.1080p.DV.HDR.Bluray.AV1.EAC3.MultiSub.mkv",
 		"Argo (2012) 1080p DV HDR Bluray AV1 EAC3/Argo.2012.1080p.DV.HDR.Bluray.AV1.EAC3.MultiSub.mkv",
+		0,
 	)
 	assertMetadata(t, m, Metadata{
 		Title:          "Argo",
@@ -46,6 +47,7 @@ func TestClassifyRealHomelandEpisode(t *testing.T) {
 		"Homeland (2011) Season 4 S04 + Extras (1080p BluRay x265 HEVC 10bit AAC 5.1 Silence)",
 		"Homeland (2011) - S04E12 - Long Time Coming (1080p BluRay x265 Silence).mkv",
 		"Homeland (2011) Season 4 S04 + Extras (1080p BluRay x265 HEVC 10bit AAC 5.1 Silence)/Homeland (2011) - S04E12 - Long Time Coming (1080p BluRay x265 Silence).mkv",
+		0,
 	)
 	assertMetadata(t, m, Metadata{
 		Title:          "Homeland",
@@ -64,6 +66,7 @@ func TestClassifyRealForAllMankindEpisode(t *testing.T) {
 		"For All Mankind (2019) S02 (1080p BluRay x265 10bit EAC3 5.1 Silence) [QxR]",
 		"For All Mankind (2019) - S02E01 - Every Little Thing (1080p BluRay x265 Silence).mkv",
 		"For All Mankind (2019) S02 (1080p BluRay x265 10bit EAC3 5.1 Silence) [QxR]/For All Mankind (2019) - S02E01 - Every Little Thing (1080p BluRay x265 Silence).mkv",
+		0,
 	)
 	assertMetadata(t, m, Metadata{
 		Title:          "For All Mankind",
@@ -82,6 +85,7 @@ func TestClassifyTedLassoFeaturette(t *testing.T) {
 		"Ted Lasso (2020) S01 (1080p BluRay x265 10bit EAC3 5.1 Ghost)",
 		"Season 1 - Extra Time with Coach Lasso - NBC Sports.mkv",
 		"Ted Lasso (2020) S01 (1080p BluRay x265 10bit EAC3 5.1 Ghost)/Featurettes/Season 1 - Extra Time with Coach Lasso - NBC Sports.mkv",
+		0,
 	)
 	assertMetadata(t, m, Metadata{
 		Title:           "Ted Lasso",
@@ -101,6 +105,7 @@ func TestClassifyCrazyStupidLoveMovieAndFeaturette(t *testing.T) {
 		"Crazy, Stupid, Love. (2011) 1080p BluRay x265",
 		"Crazy, Stupid, Love.2011.1080p.BluRay.x265.mkv",
 		"Crazy, Stupid, Love. (2011) 1080p BluRay x265/Crazy, Stupid, Love.2011.1080p.BluRay.x265.mkv",
+		0,
 	)
 	assertMetadata(t, movie, Metadata{
 		Title:          "Crazy, Stupid, Love",
@@ -114,6 +119,7 @@ func TestClassifyCrazyStupidLoveMovieAndFeaturette(t *testing.T) {
 		"Crazy, Stupid, Love. (2011) 1080p BluRay x265",
 		"Deleted Scenes.mkv",
 		"Crazy, Stupid, Love. (2011) 1080p BluRay x265/Featurettes/Deleted Scenes.mkv",
+		0,
 	)
 	assertMetadata(t, extra, Metadata{
 		Title:          "Crazy, Stupid, Love",
@@ -130,6 +136,7 @@ func TestClassify1917WithLanguageAndAudioTags(t *testing.T) {
 		"1917 (2019) 2160p H265 10 bit DV HDR10+ ita eng AC-3 5.1 sub ita eng Licdom.mkv",
 		"1917 (2019) 2160p H265 10 bit DV HDR10+ ita eng AC-3 5.1 sub ita eng Licdom.mkv",
 		"1917 (2019) 2160p H265 10 bit DV HDR10+ ita eng AC-3 5.1 sub ita eng Licdom/1917 (2019) 2160p H265 10 bit DV HDR10+ ita eng AC-3 5.1 sub ita eng Licdom.mkv",
+		0,
 	)
 	assertMetadata(t, m, Metadata{
 		Title:          "1917",
@@ -141,17 +148,74 @@ func TestClassify1917WithLanguageAndAudioTags(t *testing.T) {
 }
 
 func TestClassifyMovieEdition(t *testing.T) {
-	m := Classify("Blade Runner 1982 Directors Cut 1080p", "Blade.Runner.1982.Directors.Cut.mkv", "Blade.Runner.1982.Directors.Cut.mkv")
+	m := Classify("Blade Runner 1982 Directors Cut 1080p", "Blade.Runner.1982.Directors.Cut.mkv", "Blade.Runner.1982.Directors.Cut.mkv", 0)
 	if m.MediaType != "movie" || m.RootFolderName != "Blade Runner (1982) {edition-Director's Cut}" || m.FileName != "Blade Runner (1982) {edition-Director's Cut}.mkv" {
 		t.Fatalf("unexpected: %#v", m)
 	}
 }
 
 func TestClassifySeriesNoMovieEdition(t *testing.T) {
-	m := Classify("Some Show Extended S01E01 1080p", "Some.Show.S01E01.Extended.mkv", "Some.Show.S01E01.Extended.mkv")
+	m := Classify("Some Show Extended S01E01 1080p", "Some.Show.S01E01.Extended.mkv", "Some.Show.S01E01.Extended.mkv", 0)
 	if m.MediaType != "series" || strings.Contains(m.RootFolderName, "{edition-") || strings.Contains(m.FileName, "{edition-") {
 		t.Fatalf("unexpected: %#v", m)
 	}
+}
+
+func TestClassifySmallMovieSample(t *testing.T) {
+	m := Classify("Match Point (2005) 1080p", "SAMPLE-720p.mkv", "Match Point (2005)/Extras/SAMPLE-720p.mkv", sampleMaxBytes-1)
+	assertMetadata(t, m, Metadata{
+		Title:          "Match Point",
+		MediaType:      "movie",
+		RootFolderName: "Match Point (2005)",
+		FolderName:     "Other",
+		FileName:       "SAMPLE-720p.mkv",
+	})
+	assertPtr(t, m.Years, 2005)
+	assertNoPtr(t, m.Season)
+	assertNoPtr(t, m.Episode)
+}
+
+func TestClassifySampleAtSizeLimitNormally(t *testing.T) {
+	m := Classify("Match Point (2005) 1080p", "sample.mkv", "Match Point (2005)/sample.mkv", sampleMaxBytes)
+	if m.MediaType != "movie" || m.FolderName == "Other" || m.ExtraFolderName != "" {
+		t.Fatalf("sample at size limit was classified as an extra: %#v", m)
+	}
+}
+
+func TestClassifySmallNonPrefixSampleNormally(t *testing.T) {
+	m := Classify("Match Point (2005) 1080p", "Match-Point-sample.mkv", "Match Point (2005)/Match-Point-sample.mkv", sampleMaxBytes-1)
+	if m.MediaType != "movie" || m.FolderName == "Other" || m.ExtraFolderName != "" {
+		t.Fatalf("non-prefix sample was classified as an extra: %#v", m)
+	}
+}
+
+func TestClassifySmallSeriesSampleWithSeason(t *testing.T) {
+	m := Classify("Example Show (2020) Season 2", "Sample 2.mp4", "Example Show (2020)/Season 2/Sample 2.mp4", sampleMaxBytes-1)
+	assertMetadata(t, m, Metadata{
+		Title:           "Example Show",
+		MediaType:       "series",
+		RootFolderName:  "Example Show (2020)",
+		FolderName:      "Season 02",
+		ExtraFolderName: "Other",
+		FileName:        "Sample 2.mp4",
+	})
+	assertPtr(t, m.Years, 2020)
+	assertPtr(t, m.Season, 2)
+	assertNoPtr(t, m.Episode)
+}
+
+func TestClassifySmallSeriesSampleWithoutSeason(t *testing.T) {
+	m := Classify("Example Show (2020)", "sample.mkv", "media/tv/Example Show (2020)/sample.mkv", sampleMaxBytes-1)
+	assertMetadata(t, m, Metadata{
+		Title:           "Example Show",
+		MediaType:       "series",
+		RootFolderName:  "Example Show (2020)",
+		ExtraFolderName: "Other",
+		FileName:        "sample.mkv",
+	})
+	assertPtr(t, m.Years, 2020)
+	assertNoPtr(t, m.Season)
+	assertNoPtr(t, m.Episode)
 }
 
 func TestParseTorrentNameYearLikeTitle1917(t *testing.T) {

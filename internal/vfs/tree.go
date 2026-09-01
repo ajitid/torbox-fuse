@@ -96,7 +96,12 @@ func RecordPath(r media.FileRecord) string {
 		return path.Join("/movies", media.SafePathName(root), media.SafePathName(fn))
 	case "series":
 		if r.MetadataExtraFolderName != "" {
-			return path.Join("/series", media.SafePathName(root), media.SafePathName(r.MetadataFolderName), media.SafePathName(r.MetadataExtraFolderName), media.SafePathName(fn))
+			parts := []string{"/series", media.SafePathName(root)}
+			if r.MetadataFolderName != "" {
+				parts = append(parts, media.SafePathName(r.MetadataFolderName))
+			}
+			parts = append(parts, media.SafePathName(r.MetadataExtraFolderName), media.SafePathName(fn))
+			return path.Join(parts...)
 		}
 		return path.Join("/series", media.SafePathName(root), media.SafePathName(r.MetadataFolderName), media.SafePathName(fn))
 	default:

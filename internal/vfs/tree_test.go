@@ -30,6 +30,18 @@ func TestBuildTreeWithPlexRenamedDuplicates(t *testing.T) {
 	}
 }
 
+func TestRecordPathShowLevelSeriesExtra(t *testing.T) {
+	r := media.FileRecord{
+		MetadataMediaType:       "series",
+		MetadataRootFolderName:  "Example Show (2020)",
+		MetadataExtraFolderName: "Other",
+		MetadataFileName:        "sample.mkv",
+	}
+	if got, want := RecordPath(r), "/series/Example Show (2020)/Other/sample.mkv"; got != want {
+		t.Fatalf("RecordPath() = %q, want %q", got, want)
+	}
+}
+
 func TestBuildTreeAfterCanonicalRootCasingMergesCaseOnlySeriesRoots(t *testing.T) {
 	recs := []media.FileRecord{
 		{Key: "k1", MetadataMediaType: "series", MetadataRootFolderName: "Mad Men", MetadataFolderName: "Season 01", MetadataFileName: "Mad Men - s01e01.mkv"},
