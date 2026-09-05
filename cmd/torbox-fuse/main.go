@@ -44,7 +44,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("mount=%s data=%s cache=%s media_change_check_poll_time=%s api_key=%s allow_other=%v sources=%v web=http://0.0.0.0:%d", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.MediaChangeCheckPollTime, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther, cfg.Sources, cfg.WebAppPort)
+	logger.Printf("mount=%s data=%s cache=%s media_change_check_poll_time=%s media_full_resync_time=%s api_key=%s allow_other=%v sources=%v web=http://0.0.0.0:%d", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.MediaChangeCheckPollTime, cfg.MediaFullResyncTime, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther, cfg.Sources, cfg.WebAppPort)
 	if err := ensureEmptyMountPath(cfg.MountPath); err != nil {
 		return err
 	}
@@ -116,13 +116,15 @@ func run() error {
 		return fmt.Errorf("start web server: %w", err)
 	}
 	go func() {
-		ticker := time.NewTicker(cfg.MediaChangeCheckPollTime)
-		defer ticker.Stop()
+		pollTicker := time.NewTicker(cfg.MediaChangeCheckPollTime)
+		resyncTicker := time.NewTicker(cfg.MediaFullResyncTime)
+		defer pollTicker.Stop()
+		defer resyncTicker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
+			case <-pollTicker.C:
 				changed, err := mgr.Poll(ctx)
 				if err != nil {
 					logger.Printf("scheduled media change check failed: %v", err)
@@ -133,6 +135,9 @@ func run() error {
 				}
 				logger.Printf("scheduled media change detected")
 				_, _ = refreshOnce(ctx, "scheduled", false)
+			case <-resyncTicker.C:
+				logger.Printf("scheduled authoritative resync")
+				_, _ = refreshOnce(ctx, "scheduled resync", false)
 			}
 		}
 	}()

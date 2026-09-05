@@ -62,6 +62,7 @@ See `.env.example`.
 - `MOUNT_PATH` defaults to `./torbox`.
 - `DATA_PATH` defaults to `./torbox-fuse.db`.
 - `MEDIA_CHANGE_CHECK_POLL_TIME` defaults to `15s`. It checks for external TorBox-library changes and accepts standard Go durations such as `15s`, `2m`, or `2h5s`. A detected change triggers a full mount refresh; Plex/Jellyfin are notified only if the visible `movies` or `series` view changed.
+- `MEDIA_FULL_RESYNC_TIME` defaults to `24h` and accepts standard Go durations. It performs an authoritative full library resync, closing fingerprint-probe blind spots such as an offsetting add and deletion between polls.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
 - `CACHE_PATH` defaults to your OS cache directory plus `torbox-fuse`.
 - `PLEX_ACCESS_TOKEN` is optional. When set, torbox-fuse requests Plex partial scans for `${MOUNT_PATH}/movies` and `${MOUNT_PATH}/series` at startup and after explicit manual refreshes, plus detected external changes to the visible media view.

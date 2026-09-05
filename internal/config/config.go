@@ -21,6 +21,7 @@ type Config struct {
 	MountPath                string
 	DataPath                 string
 	MediaChangeCheckPollTime time.Duration
+	MediaFullResyncTime      time.Duration
 	AllowOther               bool
 	Version                  string
 	CachePath                string
@@ -43,11 +44,11 @@ func Load() (Config, error) {
 	dataPath := envDefault("DATA_PATH", "./torbox-fuse.db")
 	plexAccessToken := strings.TrimSpace(os.Getenv("PLEX_ACCESS_TOKEN"))
 	jellyfinAPIKey := strings.TrimSpace(os.Getenv("JELLYFIN_API_KEY"))
-	pollValue, ok := os.LookupEnv("MEDIA_CHANGE_CHECK_POLL_TIME")
-	if !ok {
-		pollValue = "15s"
+	pollTime, err := parseMediaChangeCheckPollTime(durationEnv("MEDIA_CHANGE_CHECK_POLL_TIME", "15s"))
+	if err != nil {
+		return Config{}, err
 	}
-	pollTime, err := parseMediaChangeCheckPollTime(pollValue)
+	resyncTime, err := parseMediaFullResyncTime(durationEnv("MEDIA_FULL_RESYNC_TIME", "24h"))
 	if err != nil {
 		return Config{}, err
 	}
@@ -68,6 +69,7 @@ func Load() (Config, error) {
 		MountPath:                mountPath,
 		DataPath:                 dataPath,
 		MediaChangeCheckPollTime: pollTime,
+		MediaFullResyncTime:      resyncTime,
 		AllowOther:               parseBoolEnv(os.Getenv("FUSE_ALLOW_OTHER")),
 		Version:                  "dev",
 		CachePath:                envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-fuse")),
@@ -89,14 +91,29 @@ func envDefault(key, def string) string {
 	return def
 }
 
+func durationEnv(key, def string) string {
+	if v, ok := os.LookupEnv(key); ok {
+		return v
+	}
+	return def
+}
+
 func parseMediaChangeCheckPollTime(v string) (time.Duration, error) {
+	return parsePositiveDuration("MEDIA_CHANGE_CHECK_POLL_TIME", v)
+}
+
+func parseMediaFullResyncTime(v string) (time.Duration, error) {
+	return parsePositiveDuration("MEDIA_FULL_RESYNC_TIME", v)
+}
+
+func parsePositiveDuration(key, v string) (time.Duration, error) {
 	v = strings.TrimSpace(v)
 	if v == "" {
-		return 0, fmt.Errorf("MEDIA_CHANGE_CHECK_POLL_TIME must not be empty")
+		return 0, fmt.Errorf("%s must not be empty", key)
 	}
 	d, err := time.ParseDuration(v)
 	if err != nil || d <= 0 {
-		return 0, fmt.Errorf("invalid MEDIA_CHANGE_CHECK_POLL_TIME %q (must be a positive Go duration)", v)
+		return 0, fmt.Errorf("invalid %s %q (must be a positive Go duration)", key, v)
 	}
 	return d, nil
 }
