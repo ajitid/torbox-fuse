@@ -44,7 +44,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	logger.Printf("mount=%s data=%s cache=%s refresh=%s api_key=%s allow_other=%v sources=%v web=http://0.0.0.0:%d", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.RefreshEvery, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther, cfg.Sources, cfg.WebAppPort)
+	logger.Printf("mount=%s data=%s cache=%s media_change_check_poll_time=%s api_key=%s allow_other=%v sources=%v web=http://0.0.0.0:%d", cfg.MountPath, cfg.DataPath, cfg.CachePath, cfg.MediaChangeCheckPollTime, config.MaskAPIKey(cfg.APIKey), cfg.AllowOther, cfg.Sources, cfg.WebAppPort)
 	if err := ensureEmptyMountPath(cfg.MountPath); err != nil {
 		return err
 	}
@@ -64,10 +64,11 @@ func run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	logger.Printf("initial refresh starting")
-	records, err := mgr.Run(ctx)
+	initial, err := mgr.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("initial refresh failed: %w", err)
 	}
+	records := initial.Records
 	root := fusefs.New(records, client, bc)
 	server, err := root.Mount(cfg.MountPath, cfg.AllowOther, logger)
 	if err != nil {
@@ -76,18 +77,23 @@ func run() error {
 	logger.Printf("mounted on %s with %d files", cfg.MountPath, len(records))
 	plexClient.RefreshMountPaths(ctx, cfg.MountPath)
 	jellyfinClient.NotifyMountPaths(ctx, cfg.MountPath)
-	refreshOnce := func(ctx context.Context, reason string) (int, error) {
+	refreshOnce := func(ctx context.Context, reason string, notify bool) (int, error) {
 		logger.Printf("%s refresh starting", reason)
-		recs, err := mgr.Run(ctx)
+		result, err := mgr.Run(ctx)
 		if err != nil {
 			logger.Printf("%s refresh failed: %v", reason, err)
 			return 0, err
 		}
-		root.Swap(recs)
-		plexClient.RefreshMountPaths(ctx, cfg.MountPath)
-		jellyfinClient.NotifyMountPaths(ctx, cfg.MountPath)
-		logger.Printf("%s refresh applied: %d files", reason, len(recs))
-		return len(recs), nil
+		root.Swap(result.Records)
+		if notify || result.VisibleMediaChanged {
+			plexClient.RefreshMountPaths(ctx, cfg.MountPath)
+			jellyfinClient.NotifyMountPaths(ctx, cfg.MountPath)
+		}
+		logger.Printf("%s refresh applied: %d files", reason, len(result.Records))
+		return len(result.Records), nil
+	}
+	manualRefresh := func(ctx context.Context, reason string) (int, error) {
+		return refreshOnce(ctx, reason, true)
 	}
 	listFiles := func(ctx context.Context) ([]media.FileRecord, error) {
 		return st.All(ctx)
@@ -96,28 +102,37 @@ func run() error {
 		if _, err := client.CreateTorrent(ctx, magnet); err != nil {
 			return err
 		}
-		_, err := refreshOnce(ctx, "add torrent")
+		_, err := manualRefresh(ctx, "add torrent")
 		return err
 	}
 	deleteTorrent := func(ctx context.Context, id string) error {
 		if err := client.DeleteTorrent(ctx, id); err != nil {
 			return err
 		}
-		_, err := refreshOnce(ctx, "delete torrent")
+		_, err := manualRefresh(ctx, "delete torrent")
 		return err
 	}
-	if _, err := startWebServer(ctx, logger, cfg.WebAppPort, refreshOnce, listFiles, addTorrent, deleteTorrent); err != nil {
+	if _, err := startWebServer(ctx, logger, cfg.WebAppPort, manualRefresh, listFiles, addTorrent, deleteTorrent); err != nil {
 		return fmt.Errorf("start web server: %w", err)
 	}
 	go func() {
-		ticker := time.NewTicker(cfg.RefreshEvery)
+		ticker := time.NewTicker(cfg.MediaChangeCheckPollTime)
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				_, _ = refreshOnce(ctx, "scheduled")
+				changed, err := mgr.Poll(ctx)
+				if err != nil {
+					logger.Printf("scheduled media change check failed: %v", err)
+					continue
+				}
+				if !changed {
+					continue
+				}
+				logger.Printf("scheduled media change detected")
+				_, _ = refreshOnce(ctx, "scheduled", false)
 			}
 		}
 	}()

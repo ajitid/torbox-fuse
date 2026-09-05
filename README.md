@@ -61,13 +61,13 @@ See `.env.example`.
 - `TORBOX_API_KEY` is required.
 - `MOUNT_PATH` defaults to `./torbox`.
 - `DATA_PATH` defaults to `./torbox-fuse.db`.
-- `MOUNT_REFRESH_TIME` defaults to `3h`. Valid values: `24h`, `12h`, `6h`, `3h`, `1h`, or `6min`.
+- `MEDIA_CHANGE_CHECK_POLL_TIME` defaults to `15s`. It checks for external TorBox-library changes and accepts standard Go durations such as `15s`, `2m`, or `2h5s`. A detected change triggers a full mount refresh; Plex/Jellyfin are notified only if the visible `movies` or `series` view changed.
 - `FUSE_ALLOW_OTHER=true` enables `allow_other` and requires system FUSE configuration.
 - `CACHE_PATH` defaults to your OS cache directory plus `torbox-fuse`.
-- `PLEX_ACCESS_TOKEN` is optional. When set, torbox-fuse requests Plex partial scans for `${MOUNT_PATH}/movies` and `${MOUNT_PATH}/series` after TorBox refreshes.
+- `PLEX_ACCESS_TOKEN` is optional. When set, torbox-fuse requests Plex partial scans for `${MOUNT_PATH}/movies` and `${MOUNT_PATH}/series` at startup and after explicit manual refreshes, plus detected external changes to the visible media view.
 - `PLEX_BASE_URL` defaults to `http://127.0.0.1:32400`.
 - Plex refresh failures and missing matching sections are logged but do not fail TorBox refreshes.
-- `JELLYFIN_API_KEY` is optional. When set, torbox-fuse asks Jellyfin to refresh virtual folders whose locations match `${MOUNT_PATH}/movies` or `${MOUNT_PATH}/series` after TorBox refreshes.
+- `JELLYFIN_API_KEY` is optional. When set, torbox-fuse asks Jellyfin to refresh matching virtual folders at startup and after explicit manual refreshes, plus detected external changes to the visible media view.
 - `JELLYFIN_BASE_URL` defaults to `http://127.0.0.1:8096`.
 - Jellyfin refresh failures and missing matching virtual folders are logged but do not fail TorBox refreshes.
 - `WEBAPP_PORT` defaults to `4747`.

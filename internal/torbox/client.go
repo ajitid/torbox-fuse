@@ -102,49 +102,67 @@ func (c *Client) ListDownloads(ctx context.Context, typ DownloadType) ([]Item, e
 	const limit = 1000
 	var out []Item
 	for offset := 0; ; offset += limit {
-		u, _ := url.Parse(c.baseURL + "/" + string(typ) + "/mylist")
-		q := u.Query()
-		q.Set("limit", strconv.Itoa(limit))
-		q.Set("offset", strconv.Itoa(offset))
-		q.Set("bypass_cache", "true")
-		u.RawQuery = q.Encode()
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+		items, err := c.ListDownloadsPage(ctx, typ, limit, offset)
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("Authorization", "Bearer "+c.apiKey)
-		req.Header.Set("User-Agent", c.userAgent)
-		res, err := c.http.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		body, rerr := io.ReadAll(res.Body)
-		res.Body.Close()
-		if rerr != nil {
-			return nil, rerr
-		}
-		if res.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("list %s offset %d: HTTP %d: %s", typ, offset, res.StatusCode, strings.TrimSpace(string(body)))
-		}
-		var decoded apiResp
-		if err := json.Unmarshal(body, &decoded); err != nil {
-			return nil, err
-		}
-		if len(decoded.Data) == 0 {
+		if len(items) == 0 {
 			break
 		}
-		for _, ri := range decoded.Data {
-			it := Item{ID: stringifyID(ri.ID), Name: ri.Name, Hash: ri.Hash, Cached: ri.Cached, AddedAt: parseAPITime(ri.AddedAt)}
-			for _, rf := range ri.Files {
-				it.Files = append(it.Files, RemoteFile{ID: stringifyID(rf.ID), Name: rf.Name, ShortName: rf.ShortName, Size: rf.Size, MIMEType: rf.MIMEType})
-			}
-			out = append(out, it)
-		}
-		if len(decoded.Data) < limit {
+		out = append(out, items...)
+		if len(items) < limit {
 			break
 		}
 	}
 	return out, nil
+}
+
+// ListDownloadsPage returns one normalized page from a TorBox library.
+func (c *Client) ListDownloadsPage(ctx context.Context, typ DownloadType, limit, offset int) ([]Item, error) {
+	if limit <= 0 || offset < 0 {
+		return nil, fmt.Errorf("list %s: limit must be positive and offset must not be negative", typ)
+	}
+	u, _ := url.Parse(c.baseURL + "/" + string(typ) + "/mylist")
+	q := u.Query()
+	q.Set("limit", strconv.Itoa(limit))
+	q.Set("offset", strconv.Itoa(offset))
+	q.Set("bypass_cache", "true")
+	u.RawQuery = q.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("User-Agent", c.userAgent)
+	res, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	body, rerr := io.ReadAll(res.Body)
+	res.Body.Close()
+	if rerr != nil {
+		return nil, rerr
+	}
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("list %s offset %d: HTTP %d: %s", typ, offset, res.StatusCode, strings.TrimSpace(string(body)))
+	}
+	var decoded apiResp
+	if err := json.Unmarshal(body, &decoded); err != nil {
+		return nil, err
+	}
+	return normalizeItems(decoded.Data), nil
+}
+
+func normalizeItems(raw []rawItem) []Item {
+	items := make([]Item, 0, len(raw))
+	for _, ri := range raw {
+		it := Item{ID: stringifyID(ri.ID), Name: ri.Name, Hash: ri.Hash, Cached: ri.Cached, AddedAt: parseAPITime(ri.AddedAt)}
+		for _, rf := range ri.Files {
+			it.Files = append(it.Files, RemoteFile{ID: stringifyID(rf.ID), Name: rf.Name, ShortName: rf.ShortName, Size: rf.Size, MIMEType: rf.MIMEType})
+		}
+		items = append(items, it)
+	}
+	return items
 }
 
 func (c *Client) CreateTorrent(ctx context.Context, magnet string) (CreatedTorrent, error) {

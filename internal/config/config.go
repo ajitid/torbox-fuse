@@ -17,21 +17,21 @@ const (
 )
 
 type Config struct {
-	APIKey          string
-	MountPath       string
-	DataPath        string
-	RefreshEvery    time.Duration
-	AllowOther      bool
-	Version         string
-	CachePath       string
-	CacheSize       int64
-	ReadAhead       int64
-	PlexAccessToken string
-	PlexBaseURL     string
-	JellyfinAPIKey  string
-	JellyfinBaseURL string
-	WebAppPort      int
-	Sources         []torbox.DownloadType
+	APIKey                   string
+	MountPath                string
+	DataPath                 string
+	MediaChangeCheckPollTime time.Duration
+	AllowOther               bool
+	Version                  string
+	CachePath                string
+	CacheSize                int64
+	ReadAhead                int64
+	PlexAccessToken          string
+	PlexBaseURL              string
+	JellyfinAPIKey           string
+	JellyfinBaseURL          string
+	WebAppPort               int
+	Sources                  []torbox.DownloadType
 }
 
 func Load() (Config, error) {
@@ -43,7 +43,11 @@ func Load() (Config, error) {
 	dataPath := envDefault("DATA_PATH", "./torbox-fuse.db")
 	plexAccessToken := strings.TrimSpace(os.Getenv("PLEX_ACCESS_TOKEN"))
 	jellyfinAPIKey := strings.TrimSpace(os.Getenv("JELLYFIN_API_KEY"))
-	refresh, err := parseRefreshTime(envDefault("MOUNT_REFRESH_TIME", "3h"))
+	pollValue, ok := os.LookupEnv("MEDIA_CHANGE_CHECK_POLL_TIME")
+	if !ok {
+		pollValue = "15s"
+	}
+	pollTime, err := parseMediaChangeCheckPollTime(pollValue)
 	if err != nil {
 		return Config{}, err
 	}
@@ -60,21 +64,21 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	return Config{
-		APIKey:          apiKey,
-		MountPath:       mountPath,
-		DataPath:        dataPath,
-		RefreshEvery:    refresh,
-		AllowOther:      parseBoolEnv(os.Getenv("FUSE_ALLOW_OTHER")),
-		Version:         "dev",
-		CachePath:       envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-fuse")),
-		CacheSize:       DefaultCacheSize,
-		ReadAhead:       DefaultReadAhead,
-		PlexAccessToken: plexAccessToken,
-		PlexBaseURL:     envDefault("PLEX_BASE_URL", "http://127.0.0.1:32400"),
-		JellyfinAPIKey:  jellyfinAPIKey,
-		JellyfinBaseURL: envDefault("JELLYFIN_BASE_URL", "http://127.0.0.1:8096"),
-		WebAppPort:      webAppPort,
-		Sources:         sources,
+		APIKey:                   apiKey,
+		MountPath:                mountPath,
+		DataPath:                 dataPath,
+		MediaChangeCheckPollTime: pollTime,
+		AllowOther:               parseBoolEnv(os.Getenv("FUSE_ALLOW_OTHER")),
+		Version:                  "dev",
+		CachePath:                envDefault("CACHE_PATH", filepath.Join(cacheRoot, "torbox-fuse")),
+		CacheSize:                DefaultCacheSize,
+		ReadAhead:                DefaultReadAhead,
+		PlexAccessToken:          plexAccessToken,
+		PlexBaseURL:              envDefault("PLEX_BASE_URL", "http://127.0.0.1:32400"),
+		JellyfinAPIKey:           jellyfinAPIKey,
+		JellyfinBaseURL:          envDefault("JELLYFIN_BASE_URL", "http://127.0.0.1:8096"),
+		WebAppPort:               webAppPort,
+		Sources:                  sources,
 	}, nil
 }
 
@@ -85,23 +89,16 @@ func envDefault(key, def string) string {
 	return def
 }
 
-func parseRefreshTime(v string) (time.Duration, error) {
-	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "24h":
-		return 24 * time.Hour, nil
-	case "12h":
-		return 12 * time.Hour, nil
-	case "6h":
-		return 6 * time.Hour, nil
-	case "3h", "":
-		return 3 * time.Hour, nil
-	case "1h":
-		return time.Hour, nil
-	case "6min":
-		return 6 * time.Minute, nil
-	default:
-		return 0, fmt.Errorf("invalid MOUNT_REFRESH_TIME %q (valid values: 24h, 12h, 6h, 3h, 1h, 6min)", v)
+func parseMediaChangeCheckPollTime(v string) (time.Duration, error) {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return 0, fmt.Errorf("MEDIA_CHANGE_CHECK_POLL_TIME must not be empty")
 	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		return 0, fmt.Errorf("invalid MEDIA_CHANGE_CHECK_POLL_TIME %q (must be a positive Go duration)", v)
+	}
+	return d, nil
 }
 
 func parseSources(v string) ([]torbox.DownloadType, error) {

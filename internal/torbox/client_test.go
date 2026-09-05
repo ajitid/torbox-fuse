@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -47,6 +48,27 @@ func TestListDownloadsPaginationAndResolveAndRange(t *testing.T) {
 	b, status, err := c.ReadRange(context.Background(), u, 1, 2)
 	if err != nil || status != http.StatusPartialContent || string(b) != "bc" {
 		t.Fatalf("range %q %d %v", b, status, err)
+	}
+}
+
+func TestListDownloadsPage(t *testing.T) {
+	var query url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		query = r.URL.Query()
+		fmt.Fprint(w, `{"data":[{"id":1,"cached":true,"created_at":"2024-10-21T20:47:03Z","files":[{"id":2,"short_name":"Movie.mkv","size":4,"mimetype":"video/x-matroska"}]}]}`)
+	}))
+	defer srv.Close()
+	c := New("key", "test")
+	c.SetBaseURL(srv.URL)
+	items, err := c.ListDownloadsPage(context.Background(), DownloadTorrent, 7, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if query.Get("limit") != "7" || query.Get("offset") != "3" || query.Get("bypass_cache") != "true" {
+		t.Fatalf("query = %v", query)
+	}
+	if len(items) != 1 || items[0].ID != "1" || items[0].Files[0].ID != "2" || items[0].AddedAt.IsZero() {
+		t.Fatalf("items = %#v", items)
 	}
 }
 
